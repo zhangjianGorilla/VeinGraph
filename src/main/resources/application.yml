@@ -1,0 +1,71 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: veingraph-server
+  # 启用虚拟线程 (Java 21 Virtual Threads)
+  threads:
+    virtual:
+      enabled: true
+
+  # ==================== MongoDB (业务库 + 数据湖) ====================
+  data:
+    mongodb:
+      uri: mongodb://root:veingraph@localhost:27017/veingraph?authSource=admin
+    # ==================== Redis ====================
+    redis:
+      host: localhost
+      port: 6379
+      password: veingraph
+    # ==================== Elasticsearch (语义与防幻觉引擎) ====================
+    elasticsearch:
+      repositories:
+        enabled: true
+
+  elasticsearch:
+    uris: http://localhost:9200
+
+  # ==================== Kafka (异步解耦层) ====================
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: veingraph-extract-group
+      auto-offset-reset: earliest
+      # 限流: 每批最多拉取 5 条 Chunk
+      max-poll-records: 5
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+  # ==================== Neo4j (关系大脑) ====================
+  neo4j:
+    uri: bolt://localhost:7687
+    authentication:
+      username: neo4j
+      password: veingraph
+
+# ==================== Spring AI Alibaba (LLM 调用层) ====================
+spring.ai:
+  dashscope:
+    api-key: ${DASHSCOPE_API_KEY:your-api-key-here}
+    chat:
+      options:
+        model: qwen-plus
+
+# ==================== Actuator 健康检查 ====================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+# ==================== 日志配置 ====================
+logging:
+  level:
+    com.veingraph: DEBUG
+    org.springframework.data.neo4j: INFO
+    org.springframework.data.mongodb: INFO
+    org.springframework.kafka: INFO
