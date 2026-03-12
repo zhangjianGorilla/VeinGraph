@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: 9999
 
 spring:
   application:
@@ -12,10 +12,10 @@ spring:
   # ==================== MongoDB (业务库 + 数据湖) ====================
   data:
     mongodb:
-      uri: mongodb://root:veingraph@192.168.0.173:27017/veingraph?authSource=admin
+      uri: mongodb://root:veingraph@localhost:27017/veingraph?authSource=admin
     # ==================== Redis ====================
     redis:
-      host: 10.1.253.16
+      host: localhost
       port: 6379
       password: veingraph
     # ==================== Elasticsearch (语义与防幻觉引擎) ====================
@@ -24,11 +24,11 @@ spring:
         enabled: true
 
   elasticsearch:
-    uris: http://192.168.7.180:9200
+    uris: http://localhost:9200
 
   # ==================== Kafka (异步解耦层) ====================
   kafka:
-    bootstrap-servers: 10.1.253.16:9092
+    bootstrap-servers: http://localhost:9092
     consumer:
       group-id: veingraph-extract-group
       auto-offset-reset: earliest
@@ -39,13 +39,13 @@ spring:
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
   # ==================== Neo4j (关系大脑) ====================
   # 暂时禁用 Neo4j
-  # neo4j:
-  #   uri: bolt://localhost:7687
-  #   authentication:
-  #     username: neo4j
-  #     password: veingraph
+  neo4j:
+    uri: bolt://localhost:7687
+    authentication:
+      username: neo4j
+      password: veingraph
 
-# ==================== Spring AI Alibaba (LLM 调用层) ====================
+  # ==================== Spring AI Alibaba (LLM 调用层) ====================
   ai:
     zhipuai:
       api-key: "d63972e7ab7b4fbaa43edc83ec7d1eb7.U2MTywqw3QpkMdvW"
