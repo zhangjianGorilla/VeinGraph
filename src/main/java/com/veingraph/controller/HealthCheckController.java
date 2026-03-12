@@ -1,6 +1,8 @@
 package com.veingraph.controller;
 
 import com.veingraph.common.result.Result;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
 // import org.springframework.data.neo4j.core.Neo4jClient;
@@ -17,6 +19,7 @@ import java.util.Map;
  * 基础设施健康检查 Controller
  * 用于验证各个数据源连接是否正常
  */
+@Tag(name = "基础设施健康检查", description = "用于验证各个数据源连接是否正常")
 @RestController
 @RequestMapping("/api/health")
 public class HealthCheckController {
@@ -33,6 +36,7 @@ public class HealthCheckController {
     /**
      * 检查所有数据源连接状态
      */
+    @Operation(summary = "检查所有数据源连接状态", description = "检查所有数据源连接状态")
     @GetMapping("/datasources")
     public Result<Map<String, Object>> checkDatasources() {
         Map<String, Object> status = new LinkedHashMap<>();

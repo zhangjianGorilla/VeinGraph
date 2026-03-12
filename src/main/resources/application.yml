@@ -1,5 +1,7 @@
 server:
   port: 9999
+  servlet:
+    context-path: /api
 
 spring:
   application:
@@ -67,6 +69,12 @@ veingraph:
   chunking:
     max-size: 200
     max-overlap: 50
+
+# ==================== Knife4j API 文档 ====================
+knife4j:
+  enable: false
+  setting:
+    language: zh_cn
 # ==================== 日志配置 ====================
 logging:
   level:
