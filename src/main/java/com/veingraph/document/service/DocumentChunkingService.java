@@ -4,6 +4,7 @@ import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.splitter.DocumentSplitters;
 import dev.langchain4j.data.segment.TextSegment;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -16,23 +17,32 @@ import java.util.List;
 @Service
 public class DocumentChunkingService {
 
-    // 默认切片大小
-    private static final int DEFAULT_MAX_CHUNK_SIZE = 1000;
-    // 默认切片重叠字数（保证上下文连贯性）
-    private static final int DEFAULT_MAX_OVERLAP = 200;
+    /** 单个 Chunk 最大字符数 */
+    @Value("${veingraph.chunking.max-size:1000}")
+    private int maxChunkSize;
+
+    /** 相邻 Chunk 的重叠字符数（保证上下文连贯性） */
+    @Value("${veingraph.chunking.max-overlap:200}")
+    private int maxOverlap;
+
+    /**
+     * 使用默认参数进行递归字符切块
+     */
+    public List<TextSegment> split(Document document) {
+        return split(document, maxChunkSize, maxOverlap);
+    }
 
     /**
      * 递归字符切块 (Recursive Character Text Splitter)
-     * 这是目前 NLP 领域最推荐的长文切块方式，它会按段落、句子、单词的优先级递归寻找切分点
+     * 按段落 → 句子 → 单词的优先级递归寻找最优切分点
      *
      * @param document  原始长文档
-     * @return 切分后的文本段 (TextSegment) 列表
+     * @param chunkSize 单块最大字符数
+     * @param overlap   相邻块重叠字符数
+     * @return 切分后的文本段列表
      */
-    public List<TextSegment> split(Document document) {
-        log.info("开始使用 RecursiveCharacterTextSplitter 进行长文切块...");
-        return DocumentSplitters.recursive(
-                DEFAULT_MAX_CHUNK_SIZE,
-                DEFAULT_MAX_OVERLAP
-        ).split(document);
+    public List<TextSegment> split(Document document, int chunkSize, int overlap) {
+        log.info("RecursiveCharacterTextSplitter 切块: chunkSize={}, overlap={}", chunkSize, overlap);
+        return DocumentSplitters.recursive(chunkSize, overlap).split(document);
     }
 }

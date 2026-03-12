@@ -1,55 +1,71 @@
 # 脉络 (VeinGraph) 项目实现计划
 
-本文档用于追踪 VeinGraph 项目的具体开发进度。开发过程分为 5 个主要阶段（Phase）。
+本文档用于追踪 VeinGraph 项目的具体开发进度。开发过程分为 6 个主要阶段（Phase）。
 
 ## Phase 1: 基础设施搭建 (Infrastructure Bootstrapping)
 
-- [x] 初始化 Spring Boot 3 工程并在 [pom.xml](file:///c:/Code/VeinGraph/pom.xml) 中引入核心依赖（Spring Web, Spring Actuator 等）
-- [x] 搭建并验证本地开发依赖栈 (Docker Compose): 
-  - [x] Redis (缓存 / Session)
-  - [x] MongoDB (统一数据湖 / 业务库)
-  - [x] Neo4j (关系大脑)
-  - [x] Elasticsearch (>= 8.x) (全文/向量检索)
-  - [x] Kafka & Zookeeper (异步消息总线)
-- [x] 配置 Spring Boot 多数据源连接 (Spring Data MongoDB, Spring Data Neo4j, Elasticsearch Client)
+- [x] 初始化 Spring Boot 3 工程并在 `pom.xml` 中引入核心依赖
+- [x] 搭建并验证本地开发依赖栈 (Docker Compose): Redis, MongoDB, Neo4j, ES, Kafka
+- [x] 配置 Spring Boot 多数据源连接 (Spring Data MongoDB, Elasticsearch Client)
+- [x] 添加全局异常处理器与统一响应封装 (`GlobalExceptionHandler` / `Result`)
 
-## Phase 2: 核心文档处理与 LLM 集成 (Document & Foundation LLM)
+## Phase 2: 核心文档处理与 LLM 集成
 
-- [x] 集成 LangChain4j: 
-  - [x] 实现文档解析功能（支持 Tika/PDF 解析）
-  - [x] 实现长文本的 `RecursiveCharacterTextSplitter` 分块逻辑
-- [x] 集成 Spring AI Alibaba:
-  - [x] 配置通义千问 (DashScope) 的 API Key 和客户端
-  - [x] 实现基础的多轮对话调用测试接口
-- [x] 构建底层 LLM Prompt 策略模板 (Few-Shot / CoT 模板化)
-- [x] 实现并测试基础的实体抽取与结构化 JSON 解析逻辑 (Function Calling / Schema 约束)
+- [x] 集成 LangChain4j 本地 NLP 工具: Tika 文档解析 + RecursiveCharacterTextSplitter 分块
+- [x] 集成 Spring AI (智谱 ZhiPu GLM): 通过 `spring-ai-starter-model-zhipuai` 对接智谱大模型
+- [x] 构建底层 Prompt 策略模板 (Few-Shot / CoT) 与结构化 JSON 抽取 (`EntityExtractionService`)
 
-## Phase 3: 异步异步解耦流与多模态存储打通 (Async & Polyglot Storage)
+## Phase 3: 文档上传全链路 + MongoDB 数据建模
 
-- [ ] 构建 Kafka 生产者与消费者框架：
+> **优化说明**：原计划此阶段一次性打通 Kafka + 发件箱 + ES + Neo4j，跨度过大。
+> 拆分原则：先让"上传 → 解析 → 切块 → 抽取 → 存 MongoDB"的主干链路跑通，再在 Phase 4 接入异构分发。
+
+- [ ] 设计 MongoDB 核心 Document 模型：
+  - [ ] `DocumentMeta`：文档元信息（文件名、上传时间、状态、来源等）
+  - [ ] `DocumentChunk`：切分后的文本块（包含原文、块序号、来源文档 ID）
+  - [ ] `ExtractionRecord`：LLM 抽取结果（source, target, relation, evidence, 状态字段 `syncStatus`）
+- [ ] 实现文件上传 REST 接口 (`POST /api/documents/upload`)：
+  - [ ] 接收文件 → LangChain4j 解析 → 分块 → 持久化 `DocumentMeta` + `DocumentChunk` 至 MongoDB
+- [ ] 实现同步抽取模式（MVP 优先）：
+  - [ ] 遍历 Chunk 调用 `EntityExtractionService` → 将结果写入 `ExtractionRecord`（`syncStatus=UNSYNCED`）
+  - [ ] 添加重试与降级逻辑：失败标记 `NEEDS_HUMAN` 不阻塞后续 Chunk
+- [ ] 实现实体消歧与统一 (Entity Resolution) 基础逻辑
+  - [ ] 同名同姓合并策略（基于上下文 MatchScore）
+  - [ ] 代词指代消解（Prompt 层指令 + 后处理校验）
+
+## Phase 4: 异构数据分发 + 向量化 + 异步解耦
+
+> **优化说明**：Phase 3 主干跑通后，此阶段专注于将 MongoDB 中的 `UNSYNCED` 数据分发至 ES 和 Neo4j。
+> Kafka 异步解耦也在此阶段引入，替换 Phase 3 中的同步调用模式。
+
+- [ ] 向量化流水线：
+  - [ ] 调用 Spring AI `EmbeddingModel` 将 `DocumentChunk` 转化为稠密向量 (Dense Vector)
+  - [ ] 设计 ES 索引映射（含 `dense_vector` 字段 + 原文 `text` 字段）
+- [ ] 发件箱分发 (Outbox Pattern)：
+  - [ ] 监听 MongoDB Change Streams 或启动定时扫描任务，捕获 `syncStatus=UNSYNCED` 记录
+  - [ ] 扇出写 ES：批量 `_bulk` 推送带向量 Chunk
+  - [ ] 扇出写 Neo4j：通过 SDN 执行 `MERGE` 合并实体和关系
+  - [ ] 双端 ACK 后更新 MongoDB 状态为 `SYNCED`
+- [ ] Kafka 异步抽取模式（替换 Phase 3 同步模式）：
   - [ ] 创建 Topic: `doc-chunk-extract-topic`
-  - [ ] 前端上传文件的接收接口 -> LangChain4j 分块 -> Kafka 投递
-  - [ ] Kafka 消费端（配置限流）-> 调用 Spring AI Alibaba 抽取
-- [ ] 实现实体消歧与统一 (Entity Resolution) 逻辑 (基于 MatchScore 和上下文)
-- [ ] 实现提取结果的发件箱投递 (Outbox Pattern & Change Streams):
-  - [ ] 主单写：大模型关系提取后仅带有 `status="UNSYNCED"` 单写回 MongoDB（原始长文/运行状态归档）
-  - [ ] 同步构建流：监听 MongoDB Collection 的变更流 (Change Streams) 或起后台扫表任务
-  - [ ] **执行向量化转化**：调用 `Spring AI Alibaba EmbeddingModel`，将当前文档块转化为稠密向量 (Dense Vector) 放入 Payload
-  - [ ] 扇出写 (Fan-out Upsert)：向 Elasticsearch >= 8.x 推送带向量 Chunk；通过 SDN 向 Neo4j 合并结构关系，全量 ACK 后改状态为 `SYNCED`
+  - [ ] 上传接口改为：分块后投递 Kafka → Consumer 异步消费调用 LLM 抽取
+  - [ ] Consumer 限流配置（`max-poll-records`）与死信队列 (DLQ)
 
-## Phase 4: GraphRAG 与 Agent 引擎构建
+## Phase 5: GraphRAG Agent 引擎
 
-- [ ] 实现 Text2Cypher 提示工程：根据自然语言自动生成 Cypher 语句查询关系路径
-- [ ] 构建高并发虚拟线程召回架构 (Parallel Retrieval Agent):
-  - [ ] 实现并发赛道 A：启动 Virtual Task 执行 Text2Cypher 并查 Neo4j
-  - [ ] 实现并发赛道 B：调用 EmbeddingModel 将用户问题向量化，并行执行 ES 混合查文档块
-  - [ ] 主线程屏障拦截 (Barrier) 等待并汇总“图谱强关系 + 原始文本细节”
-  - [ ] 大模型一次性统合检索成果并作为超级 Prompt 生成用户回答
+- [ ] 实现 Text2Cypher 提示工程：自然语言 → Cypher 语句生成 → Neo4j 查询
+- [ ] 实现 ES 混合检索 (Hybrid Search)：关键词倒排 + Dense Vector 相似度联合排序
+- [ ] 构建并发上下文召回架构 (Parallel Retrieval)：
+  - [ ] 赛道 A：虚拟线程执行 Text2Cypher 查 Neo4j
+  - [ ] 赛道 B：虚拟线程执行问题向量化 + ES 混合查询
+  - [ ] Barrier 汇总 → 组装 Super Prompt → LLM 一次性融合生成回答
+- [ ] 实现对话历史管理（MongoDB 存储 + Redis 热缓存）
+- [ ] 实现流式 SSE 响应 (Server-Sent Events)
 
-## Phase 5: MVP前端层接入与全链路联调
+## Phase 6: 前端 MVP 与全链路联调
 
 - [ ] 搭建 Vue 3 + Element Plus 前端脚手架
-- [ ] 实现基于 D3.js / vis-network / Neo4j Visualization 的关系力导向图可视化组件
-- [ ] 实现对话界面 (Chat UI) 支持流式 SSE 响应
-- [ ] 实现文档长传管理界面及抽取实时进度监控
-- [ ] 端到端大文件全链路测试与优化
+- [ ] 实现关系力导向图可视化组件 (D3.js / vis-network)
+- [ ] 实现对话界面 (Chat UI) 支持流式 SSE 展示
+- [ ] 实现文档上传管理界面及抽取进度监控
+- [ ] 端到端大文件全链路测试与性能优化

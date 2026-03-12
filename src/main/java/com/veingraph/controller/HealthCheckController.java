@@ -3,7 +3,7 @@ package com.veingraph.controller;
 import com.veingraph.common.result.Result;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.neo4j.core.Neo4jClient;
+// import org.springframework.data.neo4j.core.Neo4jClient;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -23,8 +23,8 @@ public class HealthCheckController {
     @Autowired
     private MongoTemplate mongoTemplate;
 
-    @Autowired
-    private Neo4jClient neo4jClient;
+    // @Autowired
+    // private Neo4jClient neo4jClient;
 
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
@@ -44,13 +44,14 @@ public class HealthCheckController {
             status.put("mongodb", "❌ " + e.getMessage());
         }
 
-        // 检查 Neo4j
-        try {
-            neo4jClient.query("RETURN 1 AS result").fetch().one();
-            status.put("neo4j", "✅ 连接正常");
-        } catch (Exception e) {
-            status.put("neo4j", "❌ " + e.getMessage());
-        }
+        // 检查 Neo4j (暂时禁用)
+        // try {
+        //     neo4jClient.query("RETURN 1 AS result").fetch().one();
+        //     status.put("neo4j", "✅ 连接正常");
+        // } catch (Exception e) {
+        //     status.put("neo4j", "❌ " + e.getMessage());
+        // }
+        status.put("neo4j", "⏸️ 暂时禁用");
 
         // 检查 Redis
         try {

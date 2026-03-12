@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git init:*)",
+      "Bash(git fetch:*)",
+      "Bash(git remote:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(git pull:*)",
+      "Bash(mv .gitignore .gitignore.local && mv README.md README.md.local)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(java -version 2>&1)",
+      "Bash(where java:*)",
+      "Bash(cd C:/Code/VeinGraph && mvn compile -q)"
+    ]
+  }
+}
