@@ -67,8 +67,8 @@ management:
       show-details: always
 veingraph:
   chunking:
-    max-size: 200
-    max-overlap: 50
+    max-size: 1000
+    max-overlap: 200
 
 # ==================== Knife4j API 文档 ====================
 knife4j:
