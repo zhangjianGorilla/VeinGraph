@@ -71,11 +71,15 @@ public class GraphRagService {
      * 流式问答：并发召回 → 融合 → LLM SSE 流式输出
      */
     public Flux<String> askStream(String sessionId, String documentId, String question) {
+        long totalStart = System.currentTimeMillis();
+        
         // 保存用户消息
         chatHistoryService.saveMessage(sessionId, ChatMessage.ROLE_USER, question);
 
         // 构建 Super Prompt
+        long promptStart = System.currentTimeMillis();
         String systemPrompt = buildSuperPrompt(sessionId, documentId, question);
+        log.info("[耗时统计] 构造 SuperPrompt (多路并发等待结束) 耗时: {} ms", System.currentTimeMillis() - promptStart);
 
         // 流式调用 LLM
         Flux<String> stream = chatClient.prompt()
@@ -86,11 +90,20 @@ public class GraphRagService {
 
         // 收集完整回答并保存
         StringBuilder fullAnswer = new StringBuilder();
-        return stream.doOnNext(fullAnswer::append)
+        long[] firstTokenTime = new long[1]; // 用于记录首字返回时间
+        firstTokenTime[0] = 0;
+        
+        return stream.doOnNext(chunk -> {
+                    if (firstTokenTime[0] == 0) {
+                        firstTokenTime[0] = System.currentTimeMillis();
+                        log.info("[耗时统计] LLM 首字出块耗时 (自进入接口起): {} ms", firstTokenTime[0] - totalStart);
+                    }
+                    fullAnswer.append(chunk);
+                })
                 .doOnComplete(() -> {
                     chatHistoryService.saveMessage(
                             sessionId, ChatMessage.ROLE_ASSISTANT, fullAnswer.toString());
-                    log.info("流式问答完成, sessionId={}, 回答长度={}", sessionId, fullAnswer.length());
+                    log.info("[耗时统计] 流式问答全部回传完毕总耗时: {} ms, 最终回答长度={}", System.currentTimeMillis() - totalStart, fullAnswer.length());
                 });
     }
 
@@ -99,14 +112,26 @@ public class GraphRagService {
      */
     private String buildSuperPrompt(String sessionId, String documentId, String question) {
         // 并发执行两路召回
-        CompletableFuture<String> graphFuture = CompletableFuture.supplyAsync(
-                () -> text2CypherService.queryCypher(documentId, question), executor);
+        CompletableFuture<String> graphFuture = CompletableFuture.supplyAsync(() -> {
+            long start = System.currentTimeMillis();
+            String res = text2CypherService.queryCypher(documentId, question);
+            log.info("[耗时统计] Text2Cypher及Neo4j图谱查询 子任务耗时: {} ms", System.currentTimeMillis() - start);
+            return res;
+        }, executor);
 
-        CompletableFuture<List<String>> esFuture = CompletableFuture.supplyAsync(
-                () -> esHybridSearchService.keywordSearch(documentId, question, esTopK), executor);
+        CompletableFuture<List<String>> esFuture = CompletableFuture.supplyAsync(() -> {
+            long start = System.currentTimeMillis();
+            List<String> res = esHybridSearchService.keywordSearch(documentId, question, esTopK);
+            log.info("[耗时统计] ES倒排与向量混合检索 子任务耗时: {} ms", System.currentTimeMillis() - start);
+            return res;
+        }, executor);
 
-        CompletableFuture<String> historyFuture = CompletableFuture.supplyAsync(
-                () -> chatHistoryService.getContextHistory(sessionId), executor);
+        CompletableFuture<String> historyFuture = CompletableFuture.supplyAsync(() -> {
+            long start = System.currentTimeMillis();
+            String res = chatHistoryService.getContextHistory(sessionId);
+            log.info("[耗时统计] Redis/MongoDB历史上下文加载 子任务耗时: {} ms", System.currentTimeMillis() - start);
+            return res;
+        }, executor);
 
         // Barrier 汇总
         String graphContext;

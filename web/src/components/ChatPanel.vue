@@ -17,18 +17,16 @@
         class="message-wrapper"
         :class="msg.role === 'user' ? 'is-user' : 'is-assistant'"
       >
-        <div class="role-name">{{ msg.role === 'user' ? '提问者' : 'GraphRAG 服务' }}</div>
-        <div class="message-bubble">
-          <div class="message-content" v-html="renderMarkdown(msg.content)"></div>
+        <div class="role-name">
+          <template v-if="msg.role === 'user'">提问者</template>
+          <template v-else-if="msg.content === '' && isGenerating">GraphRAG 服务正在思考</template>
+          <template v-else>GraphRAG 服务</template>
         </div>
-      </div>
-      
-      <div v-if="isGenerating" class="message-wrapper is-assistant">
-        <div class="role-name">GraphRAG 服务正在思考</div>
         <div class="message-bubble">
-          <div class="typing-indicator">
+          <div v-if="msg.content === '' && isGenerating && msg.role === 'assistant'" class="typing-indicator">
             <span class="dot"></span><span class="dot"></span><span class="dot"></span>
           </div>
+          <div v-else class="message-content" v-html="renderMarkdown(msg.content)"></div>
         </div>
       </div>
     </div>
