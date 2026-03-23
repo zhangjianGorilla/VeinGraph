@@ -54,7 +54,7 @@ spring:
   # ==================== Spring AI Alibaba (LLM 调用层) ====================
   ai:
     zhipuai:
-      api-key: "d63972e7ab7b4fbaa43edc83ec7d1eb7.U2MTywqw3QpkMdvW"
+      api-key: ${ZHIPUAI_API_KEY:YOUR_API_KEY_HERE}
       base-url: "https://open.bigmodel.cn/api/paas"
       chat:
         options:

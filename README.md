@@ -1,108 +1,82 @@
-# 脉络 (VeinGraph) 
+# VeinGraph (脉络)
 
 [![Java Version](https://img.shields.io/badge/Java-17+-blue.svg)](https://adoptium.net/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4.x-brightgreen.svg)](https://spring.io/projects/spring-boot)
 [![Neo4j](https://img.shields.io/badge/Neo4j-5.x-blue.svg)](https://neo4j.com)
 [![Elasticsearch](https://img.shields.io/badge/Elasticsearch-8.x-yellow.svg)](https://www.elastic.co/)
 [![MongoDB](https://img.shields.io/badge/MongoDB-7.x-green.svg)](https://www.mongodb.com/)
-[![LLM](https://img.shields.io/badge/LLM-DashScope(通义千问)-orange.svg)](https://dashscope.aliyun.com/)
+[![LLM](https://img.shields.io/badge/LLM-ZhiPu_GLM-orange.svg)](https://open.bigmodel.cn/)
+[![Vue](https://img.shields.io/badge/Vue-3.x-4FC08D.svg)](https://vuejs.org/)
 
-**VeinGraph** 是一个基于大语言模型（LLM）的自动化企业级实体关系抽提与问答级数图谱构建系统。它专注于从海量的长篇幅、非结构化文本中精准剥离出有价值的关系网络，并提供抗幻觉的知识问答能力（GraphRAG）。
+**VeinGraph (脉络)** 是一个赛博暗黑风格的企业级 RAG (Retrieval-Augmented Generation) 知识图谱构建与问答系统。
+本项目基于 **Spring AI** 接入强大的大语言模型，并结合 **Vue 3** + **vis-network** 实现高度动效渲染的文档图谱分析面板。
 
-## 🚀 核心特性
+它能吞吐海量的结构/非结构化文档，通过多模态数据架构自动提纯实体与关系网络，打破 AI 幻觉，提供精确制导的流式认知问答。
 
-- **高度分工的 LLM 处理流**：
-  - 采用 **LangChain4j** 纯本地模式进行高强度文档解构（PDF/Word识别）与令牌感知切块（Recursive Splitter）。
-  - 采用 **Spring AI Alibaba** 接管核心的大模型交互环节，通过严谨的 Function Calling 机制保障结构化信息输出，极大降低模型生成错乱概率。
-- **发件箱驱动的三模态数据架构**：抛弃繁重的 Saga 分布式事务，业务主写通过 MongoDB，辅以 Change Streams 及 Kafka 异步投递分发，巧妙实现异构数据最终一致性。
-  1. **MongoDB (真理数据湖)**：保留原文、切块与全链路日志；兼并作为系统账户与任务流水的主业务库。
-  2. **Neo4j 5 (关系大脑)**：通过 Spring Data Neo4j (SDN) 绘制出复杂实体关联结构图。
-  3. **Elasticsearch 8 (语义/防幻觉引擎)**：构建稠密向量与反向索引字典，提供混合检索（Hybrid Search）。
-- **极速的双轨并发式对话 Agent**：在检索增强环节（GraphRAG），采用 Java 21 *（或向下兼容 17 的并发池）* 并行发起 Text2Cypher（Neo4j 查证据）与 向量匹配（ES 查原文）。最终熔合并拼装成一个超级 Context 给 LLM 一次性解答。首字段响应极快，且彻底拔除回答幻觉。
+![UI Prototype](veingraph_ui.png) 
+*(此为系统视觉与交互草图)*
 
 ---
 
-## 🏗️ 架构概览
+## 🚀 核心架构与黑科技
 
-```mermaid
-graph TB
-    API_GW(Spring Boot API) --> Agent[高并发 Agent 对话引擎]
-    API_GW --> Upload[文档切分与异步流水线]
-    
-    subgraph 提取分析层
-        LangChain4j[LangChain4j<br>文本解析与分块] --> Kafka[(doc-chunk-extract-topic)]
-        Kafka --> SpringAI[Spring AI Alibaba<br>DashScope 提取引擎]
-    end
-    Upload -.调度.-> LangChain4j
-    SpringAI --> Sync[Mongo 单头入库 + 提取分发器]
-        
-    Sync -->|1. 任务流对账| Mongo[(MongoDB<br>数据湖)]
-    Sync -->|2. 原文子块+Vector| ES[(Elasticsearch<br>混合检索)]
-    Sync -->|3. SDG实体边| Neo4j[(Neo4j<br>关系大脑)]
-    
-    Agent -->|Text2Cypher 结构查询| Neo4j
-    Agent -->|Elastic Hybrid Search| ES
-```
+*   **「多路并发」图谱召回 (GraphRAG)**
+    当用户发起提问时，底层问答引擎将并发拉起三路通道：(1) **Text2Cypher** 到 Neo4j 绘制图谱上下文 (2) **Elasticsearch** 混合向量检索 (Hybrid Search) 定位原始引用 (3) **Redis** 热缓提取会话记忆。最终以光速拼装为超级 Prompt 投递大模型，彻底消灭 AI 虚假捏造。
+*   **出件箱发件与 Kafka 柔性流水线**
+    支持兆字节文档的并行切块。数据主线经由 MongoDB 落地，再通过 Spring 定时器挂载 Outbox 模式，依靠 Kafka 将沉重的实体提取（Entity Extraction）、向量化（Embedding）以及 Neo4j 节点 MERGE 彻底异步剥离，服务主线程如丝般顺滑。
+*   **内置智能防呆引擎 (Entity Resolution)**
+    后端自动基于 Levenshtein 编辑距离聚类 + LLM 二次判定，将漫天横飞的「同名」「代词」等脏实体进行批量合并，保障图谱极致整洁。
+*   **全沉浸式极客 UI**
+    绝不妥协的前端设计。基于深邃科幻的 CSS 黑金质感滤镜，搭配 vis-network 动态物理引擎，让每一篇文档都拥有生命般呼吸的立体展示。
 
 ---
 
-## 🛠️ 快速启动指南
+## 🛠️ 5 分钟光速启动体验
 
-### 环境前置要求
+> **前置要求**: 本机需装有 Docker Compose, JDK 17, Node.js 以及一个智谱 AI (GLM) 的 API Key。
 
-- JDK 17 及以上
-- Docker 与 Docker Compose
-- Maven 3.8+
-- 阿里云百炼 API 令牌 (DashScope API Key)
+### 1. 唤醒深渊基建（一键起步）
 
-### 第一步：启动异构存储栈中间件
-
-项目根目录 `docker/docker-compose.yml` 已配置好全链路基础设施集群。依次包含了 `Redis`, `MongoDB`, `Neo4j`, `Elasticsearch`, `Kafka/Zookeeper`：
+我们已在内部集成全套底层数据库容器。一键拉起 Redis, MongoDB, Neo4j, Elasticsearch, 和 Kafka 联邦：
 
 ```bash
 cd docker
-# 一键起步所有依赖引擎，初始下载可能需要几分钟
 docker compose up -d
 ```
-> **默认密码说明**（见配置文件）：
-> Neo4j默认Web端: `http://localhost:7474` (neo4j / veingraph)
-> Elasticsearch: `http://localhost:9200`
-> MongoDB: `localhost:27017` (root / veingraph)
+> *(稍等几分钟等待镜像初次拉取完毕并激活)*
 
-### 第二步：配置大模型令牌
+### 2. 注入灵魂 (API Key)
 
-在执行项目前，请将您的通义千问 API 密钥写入环境变量：
+将本仓库提供的 `.env.example` 复制一份并改名为 `.env`。
+填入你的智谱开发者密钥：
+```env
+ZHIPUAI_API_KEY=换成你从官网获取的Key
+```
+
+### 3. 点燃后端引擎
+
+退回项目根目录，通过 Maven 起飞：
 ```bash
-# Windows (PowerShell)
-$env:DASHSCOPE_API_KEY="sk-xxxxxxxxxxx"
-
-# Linux / MacOS
-export DASHSCOPE_API_KEY="sk-xxxxxxxxxxx"
+mvn clean compile
+mvn spring-boot:run
 ```
+*(后端引擎将在 `localhost:9999` 启动并时刻监听请求。)*
 
-### 第三步：编译与运行主服务
-
-回到项目根录，触发 Maven 打包并运行 Spring Boot 服务器：
+### 4. 接入可视终端 (Web UI)
 
 ```bash
-mvn clean package -DskipTests
-java -jar target/veingraph-server-0.1.0-SNAPSHOT.jar
+cd web
+npm install
+npm run dev
 ```
-
-### 第四步：健康总检接口
-
-服务默认在 `8080` 启动，可用浏览器或 Postman 访问统一探活与资源就绪检查端点（囊括五大数据源连通性测试）：
-```
-GET http://localhost:8080/api/health/datasources
-```
-返回 `✅ 连接正常` 表示所有链路已经就绪。
+立即用浏览器访问 `http://localhost:5173`。上传你的第一篇复杂分析报告，静看漫天节点如同脉络一般生长。
 
 ---
 
-## 📅 近期开发路线
+## 📜 协议 (License)
 
-- [x] Phase 1: Spring Boot 基建、多数据源注册、Docker Compose 集成
-- [ ] Phase 2: LangChain4j 文档分片、Spring AI Tool Calling 与 JSON Schema 限定实验
-- [ ] Phase 3: Kafka 队列限流与异步抽取管道、MongoDB 落地兜底与分发逻辑
-- [ ] Phase 4: Neo4j Cypher 注入与 Elasticsearch 8.x Embedding 混合关联
-- [ ] Phase 5: 高级 GraphRAG 召回机制设计与前端 UI 对接
+本项目基于 **Apache-2.0** 许可证开源。请尽情魔改、分发并用来创造更酷的世界。
+
+---
+
+> *"The data is the new oil, but the relationships are the new combustion engine."* —— VeinGraph Team
