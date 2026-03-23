@@ -38,12 +38,13 @@
 > **优化说明**：Phase 3 主干跑通后，此阶段专注于将 MongoDB 中的 `UNSYNCED` 数据分发至 ES 和 Neo4j。
 > Kafka 异步解耦也在此阶段引入，替换 Phase 3 中的同步调用模式。
 
-- [ ] 向量化流水线（延至 Phase 5）：
-  - [ ] 调用 Spring AI `EmbeddingModel` 将 `DocumentChunk` 转化为稠密向量 (Dense Vector)
-  - [ ] 设计 ES 索引映射（含 `dense_vector` 字段 + 原文 `text` 字段）
+- [x] 向量化流水线：
+  - [x] 调用 Spring AI `EmbeddingModel` 将 `DocumentChunk` 转化为稠密向量 (`VectorSyncService`)
+  - [x] 设计 ES 索引映射（含 `dense_vector` 字段 + 原文 `text` 字段）(`ChunkVectorDocument`)
+  - [x] 定时扫描未向量化 Chunk 并批量处理 (`VectorSyncScheduler`)
 - [x] 发件箱分发 (Outbox Pattern)：
   - [x] 启动定时扫描任务，捕获 `syncStatus=UNSYNCED` 记录 (`OutboxScheduler`)
-  - [ ] 扇出写 ES：批量 `_bulk` 推送带向量 Chunk（延至 Phase 5）
+  - [x] 扇出写 ES：Embedding 向量化后推送至 ES (`VectorSyncService`)
   - [x] 扇出写 Neo4j：通过 Cypher 客户端执行 `MERGE` 合并实体和关系 (`GraphSyncService`)
   - [x] 同步成功后更新 MongoDB 状态为 `SYNCED`
 - [x] Kafka 异步抽取模式（替换 Phase 3 同步模式）：
@@ -53,14 +54,14 @@
 
 ## Phase 5: GraphRAG Agent 引擎
 
-- [ ] 实现 Text2Cypher 提示工程：自然语言 → Cypher 语句生成 → Neo4j 查询
-- [ ] 实现 ES 混合检索 (Hybrid Search)：关键词倒排 + Dense Vector 相似度联合排序
-- [ ] 构建并发上下文召回架构 (Parallel Retrieval)：
-  - [ ] 赛道 A：虚拟线程执行 Text2Cypher 查 Neo4j
-  - [ ] 赛道 B：虚拟线程执行问题向量化 + ES 混合查询
-  - [ ] Barrier 汇总 → 组装 Super Prompt → LLM 一次性融合生成回答
-- [ ] 实现对话历史管理（MongoDB 存储 + Redis 热缓存）
-- [ ] 实现流式 SSE 响应 (Server-Sent Events)
+- [x] 实现 Text2Cypher 提示工程：自然语言 → Cypher 语句生成 → Neo4j 查询 (`Text2CypherService`)
+- [x] 实现 ES 混合检索 (Hybrid Search)：关键词 BM25 + Dense Vector KNN 联合排序 (`EsHybridSearchService`)
+- [x] 构建并发上下文召回架构 (Parallel Retrieval)：(`GraphRagService`)
+  - [x] 赛道 A：CompletableFuture 执行 Text2Cypher 查 Neo4j
+  - [x] 赛道 B：CompletableFuture 执行 ES 关键词/混合查询
+  - [x] Barrier 汇总 → 组装 Super Prompt → LLM 一次性融合生成回答
+- [x] 实现对话历史管理（MongoDB 存储 + Redis 热缓存）(`ChatHistoryService`)
+- [x] 实现流式 SSE 响应 (Server-Sent Events) (`ChatController`)
 
 ## Phase 6: 前端 MVP 与全链路联调
 

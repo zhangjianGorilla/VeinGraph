@@ -30,6 +30,10 @@ public class DocumentChunk {
     @Schema(description = "纯文本内容")
     private String text;
 
+    @Indexed
+    @Schema(description = "是否已向量化并同步至 ES")
+    private boolean vectorized;
+
     @Schema(description = "创建时间")
     private LocalDateTime createdAt;
 }

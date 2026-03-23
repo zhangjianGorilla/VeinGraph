@@ -69,6 +69,13 @@ veingraph:
   chunking:
     max-size: 1000
     max-overlap: 200
+  rag:
+    es-top-k: 5
+  outbox:
+    scan-interval: 10000
+    batch-size: 100
+  vector:
+    scan-interval: 15000
 
 # ==================== Knife4j API 文档 ====================
 knife4j:
