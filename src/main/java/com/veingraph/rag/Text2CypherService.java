@@ -34,13 +34,20 @@ public class Text2CypherService {
     /**
      * 将用户问题转换为 Cypher 并执行，返回可读的文本摘要
      *
-     * @param question 用户自然语言问题
+     * @param documentId 限定的文档 ID (可选)
+     * @param question   用户自然语言问题
      * @return Neo4j 查询结果的文本摘要，查询失败或无结果时返回空字符串
      */
-    public String queryCypher(String question) {
+    public String queryCypher(String documentId, String question) {
         try {
             // 1. LLM 生成 Cypher
             String systemPrompt = systemPromptResource.getContentAsString(StandardCharsets.UTF_8);
+            if (documentId != null && !documentId.isBlank()) {
+                systemPrompt += "\n\nCRITICAL INSTRUCTION: You MUST filter the relationship by the specific document ID given. " 
+                             + "Always append `WHERE r.documentId = '" + documentId + "'` to your MATCH clause. "
+                             + "Do NOT try to match the filename using CONTAINS.";
+            }
+
             String cypher = chatClient.prompt()
                     .system(systemPrompt)
                     .user(question)

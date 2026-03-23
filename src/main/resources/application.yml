@@ -36,6 +36,10 @@ spring:
       auto-offset-reset: earliest
       # 限流: 每批最多拉取 5 条 Chunk
       max-poll-records: 5
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.veingraph.kafka"
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
@@ -67,7 +71,7 @@ management:
       show-details: always
 veingraph:
   chunking:
-    max-size: 1000
+    max-size: 5000
     max-overlap: 200
   rag:
     es-top-k: 5

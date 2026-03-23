@@ -12,6 +12,8 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 
+import com.veingraph.repository.mongo.DocumentChunkRepository; // <-- Import here if not already imported
+
 /**
  * Kafka 消费者：异步消费文本块，调用 LLM 进行实体关系抽取
  */
@@ -22,6 +24,7 @@ public class ChunkExtractConsumer {
 
     private final EntityExtractionService extractionService;
     private final ExtractionRecordRepository recordRepository;
+    private final DocumentChunkRepository chunkRepository;
 
     @KafkaListener(
             topics = ChunkMessage.TOPIC,
@@ -47,8 +50,22 @@ public class ChunkExtractConsumer {
                     er.setCreatedAt(LocalDateTime.now());
                     recordRepository.save(er);
                 }
+                
+                // 将 chunk 标记为已抽取
+                chunkRepository.findById(message.getChunkId()).ifPresent(chunk -> {
+                    chunk.setExtracted(true);
+                    chunkRepository.save(chunk);
+                });
+
                 log.info("Chunk[{}] 异步抽取成功, 提取 {} 条关系",
                         message.getChunkId(), result.getRecords().size());
+            } else {
+                 // 即使没有抽取出关系，也算处理过了
+                 chunkRepository.findById(message.getChunkId()).ifPresent(chunk -> {
+                     chunk.setExtracted(true);
+                     chunkRepository.save(chunk);
+                 });
+                 log.info("Chunk[{}] 异步抽取完成, 未提取出关系", message.getChunkId());
             }
         } catch (Exception e) {
             log.error("Chunk[{}] 异步抽取失败: {}", message.getChunkId(), e.getMessage());

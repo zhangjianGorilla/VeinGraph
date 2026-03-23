@@ -32,30 +32,41 @@ public class EsHybridSearchService {
 
     /**
      * 关键词检索（BM25）
-     * 当向量化组件尚未就绪时使用此降级模式
      *
+     * @param documentId 限定的文档 ID（可为空，为空则全局搜）
      * @param question 用户问题文本
      * @param topK     返回数量上限
      * @return 相关文本块列表
      */
-    public List<String> keywordSearch(String question, int topK) {
+    public List<String> keywordSearch(String documentId, String question, int topK) {
         try {
             Query matchQuery = MatchQuery.of(m -> m
                     .field("text")
                     .query(question))._toQuery();
 
+            // 构建最终查询（带或不带文档过滤）
+            final Query searchQuery;
+            if (documentId != null && !documentId.isBlank()) {
+                Query termQuery = co.elastic.clients.elasticsearch._types.query_dsl.TermQuery.of(t -> t
+                        .field("documentId")
+                        .value(documentId))._toQuery();
+                searchQuery = BoolQuery.of(b -> b.must(matchQuery).filter(termQuery))._toQuery();
+            } else {
+                searchQuery = matchQuery;
+            }
+
             SearchRequest request = SearchRequest.of(s -> s
                     .index(INDEX_NAME)
-                    .query(matchQuery)
+                    .query(searchQuery)
                     .size(topK));
 
-            SearchResponse<ChunkVectorDocument> response =
-                    esClient.search(request, ChunkVectorDocument.class);
+            SearchResponse<com.fasterxml.jackson.databind.node.ObjectNode> response =
+                    esClient.search(request, com.fasterxml.jackson.databind.node.ObjectNode.class);
 
             List<String> results = response.hits().hits().stream()
-                    .map(Hit::source)
-                    .filter(doc -> doc != null)
-                    .map(ChunkVectorDocument::getText)
+                    .map(co.elastic.clients.elasticsearch.core.search.Hit::source)
+                    .filter(doc -> doc != null && doc.has("text"))
+                    .map(doc -> doc.get("text").asText())
                     .collect(Collectors.toList());
 
             log.info("ES 关键词检索: query='{}', 命中 {} 条", question, results.size());
@@ -69,14 +80,14 @@ public class EsHybridSearchService {
 
     /**
      * 混合检索：BM25 关键词 + Dense Vector KNN 联合排序
-     * Phase 5 完整版本（需要 Embedding 模型生成 queryVector）
-     *
+     * 
+     * @param documentId  限定的文档 ID（可为空）
      * @param question    用户问题文本
      * @param queryVector 问题的稠密向量表示
      * @param topK        返回数量上限
      * @return 相关文本块列表
      */
-    public List<String> hybridSearch(String question, float[] queryVector, int topK) {
+    public List<String> hybridSearch(String documentId, String question, float[] queryVector, int topK) {
         try {
             // BM25 关键词匹配
             Query matchQuery = MatchQuery.of(m -> m
@@ -84,25 +95,52 @@ public class EsHybridSearchService {
                     .query(question)
                     .boost(0.3f))._toQuery();
 
-            // 构建混合查询: BM25 + KNN
-            SearchRequest request = SearchRequest.of(s -> s
-                    .index(INDEX_NAME)
-                    .query(BoolQuery.of(b -> b.should(matchQuery))._toQuery())
-                    .knn(k -> k
-                            .field("vector")
-                            .queryVector(toList(queryVector))
-                            .k(topK)
-                            .numCandidates(topK * 2)
-                            .boost(0.7f))
-                    .size(topK));
+            // 构建最终查询（带或不带文档过滤）
+            final Query searchQuery;
+            if (documentId != null && !documentId.isBlank()) {
+                Query termQuery = co.elastic.clients.elasticsearch._types.query_dsl.TermQuery.of(t -> t
+                        .field("documentId")
+                        .value(documentId))._toQuery();
+                searchQuery = BoolQuery.of(b -> b.should(matchQuery).filter(termQuery))._toQuery();
+            } else {
+                searchQuery = BoolQuery.of(b -> b.should(matchQuery))._toQuery();
+            }
 
-            SearchResponse<ChunkVectorDocument> response =
-                    esClient.search(request, ChunkVectorDocument.class);
+            // KNN 预过滤查询（可选）
+            final Query knnFilter;
+            if (documentId != null && !documentId.isBlank()) {
+                knnFilter = co.elastic.clients.elasticsearch._types.query_dsl.TermQuery.of(t -> t
+                        .field("documentId")
+                        .value(documentId))._toQuery();
+            } else {
+                knnFilter = null;
+            }
+
+            SearchRequest request = SearchRequest.of(s -> {
+                s.index(INDEX_NAME)
+                 .query(searchQuery)
+                 .size(topK);
+                s.knn(k -> {
+                    k.field("vector")
+                     .queryVector(toList(queryVector))
+                     .k(topK)
+                     .numCandidates(topK * 2)
+                     .boost(0.7f);
+                    if (knnFilter != null) {
+                        k.filter(knnFilter);
+                    }
+                    return k;
+                });
+                return s;
+            });
+
+            SearchResponse<com.fasterxml.jackson.databind.node.ObjectNode> response =
+                    esClient.search(request, com.fasterxml.jackson.databind.node.ObjectNode.class);
 
             List<String> results = response.hits().hits().stream()
-                    .map(Hit::source)
-                    .filter(doc -> doc != null)
-                    .map(ChunkVectorDocument::getText)
+                    .map(co.elastic.clients.elasticsearch.core.search.Hit::source)
+                    .filter(doc -> doc != null && doc.has("text"))
+                    .map(doc -> doc.get("text").asText())
                     .collect(Collectors.toList());
 
             log.info("ES 混合检索: query='{}', 命中 {} 条", question, results.size());

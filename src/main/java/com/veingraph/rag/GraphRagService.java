@@ -43,12 +43,12 @@ public class GraphRagService {
     /**
      * 非流式问答：并发召回 → 融合 → LLM 一次性生成
      */
-    public String ask(String sessionId, String question) {
+    public String ask(String sessionId, String documentId, String question) {
         // 保存用户消息
         chatHistoryService.saveMessage(sessionId, ChatMessage.ROLE_USER, question);
 
         // 构建 Super Prompt
-        String systemPrompt = buildSuperPrompt(sessionId, question);
+        String systemPrompt = buildSuperPrompt(sessionId, documentId, question);
 
         // 调用 LLM 生成
         try {
@@ -70,12 +70,12 @@ public class GraphRagService {
     /**
      * 流式问答：并发召回 → 融合 → LLM SSE 流式输出
      */
-    public Flux<String> askStream(String sessionId, String question) {
+    public Flux<String> askStream(String sessionId, String documentId, String question) {
         // 保存用户消息
         chatHistoryService.saveMessage(sessionId, ChatMessage.ROLE_USER, question);
 
         // 构建 Super Prompt
-        String systemPrompt = buildSuperPrompt(sessionId, question);
+        String systemPrompt = buildSuperPrompt(sessionId, documentId, question);
 
         // 流式调用 LLM
         Flux<String> stream = chatClient.prompt()
@@ -97,13 +97,13 @@ public class GraphRagService {
     /**
      * 构建 Super Prompt：并发执行双路召回并融合
      */
-    private String buildSuperPrompt(String sessionId, String question) {
+    private String buildSuperPrompt(String sessionId, String documentId, String question) {
         // 并发执行两路召回
         CompletableFuture<String> graphFuture = CompletableFuture.supplyAsync(
-                () -> text2CypherService.queryCypher(question), executor);
+                () -> text2CypherService.queryCypher(documentId, question), executor);
 
         CompletableFuture<List<String>> esFuture = CompletableFuture.supplyAsync(
-                () -> esHybridSearchService.keywordSearch(question, esTopK), executor);
+                () -> esHybridSearchService.keywordSearch(documentId, question, esTopK), executor);
 
         CompletableFuture<String> historyFuture = CompletableFuture.supplyAsync(
                 () -> chatHistoryService.getContextHistory(sessionId), executor);

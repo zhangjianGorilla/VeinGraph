@@ -38,14 +38,16 @@ public class ChatController {
     public Flux<String> stream(
             @Parameter(description = "会话 ID，不传则自动创建")
             @RequestParam(required = false) String sessionId,
+            @Parameter(description = "指定限定范围的文档 ID")
+            @RequestParam(required = false) String documentId,
             @Parameter(description = "用户问题")
             @RequestParam String question) {
 
         if (sessionId == null || sessionId.isBlank()) {
             sessionId = UUID.randomUUID().toString().replace("-", "");
         }
-        log.info("流式问答: sessionId={}, question={}", sessionId, question);
-        return graphRagService.askStream(sessionId, question);
+        log.info("流式问答: sessionId={}, documentId={}, question={}", sessionId, documentId, question);
+        return graphRagService.askStream(sessionId, documentId, question);
     }
 
     /**
@@ -56,14 +58,16 @@ public class ChatController {
     public Result<String> ask(
             @Parameter(description = "会话 ID，不传则自动创建")
             @RequestParam(required = false) String sessionId,
+            @Parameter(description = "指定限定范围的文档 ID")
+            @RequestParam(required = false) String documentId,
             @Parameter(description = "用户问题")
             @RequestParam String question) {
 
         if (sessionId == null || sessionId.isBlank()) {
             sessionId = UUID.randomUUID().toString().replace("-", "");
         }
-        log.info("同步问答: sessionId={}, question={}", sessionId, question);
-        return Result.ok(graphRagService.ask(sessionId, question));
+        log.info("同步问答: sessionId={}, documentId={}, question={}", sessionId, documentId, question);
+        return Result.ok(graphRagService.ask(sessionId, documentId, question));
     }
 
     /**

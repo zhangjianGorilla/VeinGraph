@@ -11,6 +11,8 @@ public interface DocumentChunkRepository extends MongoRepository<DocumentChunk, 
 
     long countByDocumentId(String documentId);
 
+    long countByDocumentIdAndExtractedTrue(String documentId);
+
     /**
      * 查询未向量化的 Chunk，供 VectorSyncScheduler 批量处理
      */

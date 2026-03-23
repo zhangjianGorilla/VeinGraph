@@ -34,6 +34,10 @@ public class DocumentChunk {
     @Schema(description = "是否已向量化并同步至 ES")
     private boolean vectorized;
 
+    @Indexed
+    @Schema(description = "是否已由大模型完成实体提取")
+    private boolean extracted;
+
     @Schema(description = "创建时间")
     private LocalDateTime createdAt;
 }
