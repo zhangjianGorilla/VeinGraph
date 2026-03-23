@@ -79,4 +79,43 @@ npm run dev
 
 ---
 
+## 🔄 LLM 引擎热切换指南 (兼容 OpenAI / Ollama)
+
+VeinGraph 的一大优势是底层完全基于 **Spring AI 统一架构** 开发，这意味着系统核心的图谱抽取和问答引擎与具体的模型厂商**100% 解耦**。如果你没有智谱 AI 的令牌，或者想换上 OpenAI、DeepSeek、甚至是本地的 Ollama（离线隐私部署），只需极简的两步即可完成换脑：
+
+### 示例：切换为 OpenAI / 第三方兼容模型 (如 DeepSeek)
+**1. 修改 Maven 依赖 (`pom.xml`)**
+将智谱 AI 的 starter 移除：
+```xml
+<!-- <dependency>
+    <groupId>com.alibaba.cloud.ai</groupId>
+    <artifactId>spring-ai-alibaba-starter-model-zhipuai</artifactId>
+</dependency> -->
+
+<!-- 替换为 -->
+<dependency>
+    <groupId>org.springframework.ai</groupId>
+    <artifactId>spring-ai-openai-spring-boot-starter</artifactId>
+</dependency>
+```
+
+**2. 修改配置文件 (`application.yml`)**
+将 `spring.ai.zhipuai.*` 节点替换为 OpenAI 节点：
+```yaml
+spring:
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      base-url: "https://api.openai.com/v1" # 或者填入 DeepSeek 等兼容 OpenAI API 的网址
+      chat:
+        options:
+          model: gpt-4o # 或者 deepseek-chat
+```
+无需更改任何一行 Java 代码，重启即可生效！
+
+### 示例：完全离线化部署 (切换为 Ollama)
+如果你的涉密文档不允许出网，可以在本地启动 Ollama 运行 `qwen:32b` 或 `llama3`。方法同理，引入 `spring-ai-ollama-spring-boot-starter` 并指定本地 `127.0.0.1:11434` 端点即可。
+
+---
+
 > *"The data is the new oil, but the relationships are the new combustion engine."* —— VeinGraph Team
