@@ -36,7 +36,7 @@ public class DocumentController {
     private final DocumentMetaRepository metaRepository;
     private final ExtractionRecordRepository recordRepository;
 
-    @Operation(summary = "上传文件并抽取", description = "上传文档文件，触发 Tika 解析 → 切块 → LLM 实体关系抽取全链路")
+    @Operation(summary = "同步上传文件并抽取", description = "上传文档文件，同步执行 Tika 解析 → 切块 → LLM 实体关系抽取全链路（适合小文件）")
     @PostMapping("/upload")
     public Result<DocumentMeta> upload(
             @Parameter(description = "待上传的文档文件 (PDF/Word/TXT 等)")
@@ -44,8 +44,21 @@ public class DocumentController {
         if (file.isEmpty()) {
             return Result.fail("上传文件不能为空");
         }
-        log.info("接收文件上传: {}, 大小: {} bytes", file.getOriginalFilename(), file.getSize());
+        log.info("接收文件同步上传: {}, 大小: {} bytes", file.getOriginalFilename(), file.getSize());
         DocumentMeta meta = documentService.uploadAndExtract(file);
+        return Result.ok(meta);
+    }
+
+    @Operation(summary = "异步上传文件并抽取", description = "上传文档文件，解析并切块后将抽取任务投递至 Kafka，由后台异步处理（推荐）")
+    @PostMapping("/upload-async")
+    public Result<DocumentMeta> uploadAsync(
+            @Parameter(description = "待上传的文档文件 (PDF/Word/TXT 等)")
+            @RequestParam("file") MultipartFile file) throws IOException {
+        if (file.isEmpty()) {
+            return Result.fail("上传文件不能为空");
+        }
+        log.info("接收文件异步上传: {}, 大小: {} bytes", file.getOriginalFilename(), file.getSize());
+        DocumentMeta meta = documentService.uploadAsync(file);
         return Result.ok(meta);
     }
 

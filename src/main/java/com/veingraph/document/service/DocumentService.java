@@ -9,6 +9,8 @@ import com.veingraph.model.ExtractionRecord;
 import com.veingraph.repository.mongo.DocumentChunkRepository;
 import com.veingraph.repository.mongo.DocumentMetaRepository;
 import com.veingraph.repository.mongo.ExtractionRecordRepository;
+import com.veingraph.kafka.ChunkExtractProducer;
+import com.veingraph.kafka.ChunkMessage;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.segment.TextSegment;
 import lombok.RequiredArgsConstructor;
@@ -36,9 +38,10 @@ public class DocumentService {
     private final DocumentMetaRepository metaRepository;
     private final DocumentChunkRepository chunkRepository;
     private final ExtractionRecordRepository recordRepository;
+    private final ChunkExtractProducer chunkExtractProducer;
 
     /**
-     * 核心方法：上传文件并执行全链路抽取
+     * 同步全链路抽取（供小文件测试用）
      */
     public DocumentMeta uploadAndExtract(MultipartFile file) throws IOException {
         // 1. 保存文档元信息
@@ -113,6 +116,59 @@ public class DocumentService {
 
         log.info("文档 [{}] 全链路处理完成, 状态: {}, 失败块数: {}",
                 meta.getFileName(), meta.getStatus(), failedCount);
+        return meta;
+    }
+
+    /**
+     * 核心方法：异步上传文件，切块后投递至 Kafka
+     */
+    public DocumentMeta uploadAsync(MultipartFile file) throws IOException {
+        // 1. 保存文档元信息
+        DocumentMeta meta = new DocumentMeta();
+        meta.setFileName(file.getOriginalFilename());
+        meta.setContentType(file.getContentType());
+        meta.setFileSize(file.getSize());
+        meta.setStatus(DocumentMeta.STATUS_PENDING);
+        meta.setCreatedAt(LocalDateTime.now());
+        meta.setUpdatedAt(LocalDateTime.now());
+        meta = metaRepository.save(meta);
+        log.info("异步上传: 文档元信息已保存: id={}, fileName={}", meta.getId(), meta.getFileName());
+
+        // 2. Tika 解析
+        Document document = parserService.parse(file.getInputStream());
+        log.info("Tika 解析完成, 文本长度: {}", document.text().length());
+
+        // 3. 切块
+        List<TextSegment> segments = chunkingService.split(document);
+        log.info("切块完成, 共 {} 块", segments.size());
+
+        // 4. 持久化所有 Chunk
+        List<DocumentChunk> chunks = new ArrayList<>();
+        for (int i = 0; i < segments.size(); i++) {
+            DocumentChunk chunk = new DocumentChunk();
+            chunk.setDocumentId(meta.getId());
+            chunk.setChunkIndex(i);
+            chunk.setText(segments.get(i).text());
+            chunk.setCreatedAt(LocalDateTime.now());
+            chunks.add(chunk);
+        }
+        chunks = chunkRepository.saveAll(chunks);
+
+        // 5. 更新 Meta 状态为 EXTRACTING
+        meta.setTotalChunks(chunks.size());
+        meta.setStatus(DocumentMeta.STATUS_EXTRACTING);
+        meta.setUpdatedAt(LocalDateTime.now());
+        metaRepository.save(meta);
+
+        // 6. 遍历 Chunk，投递 Kafka 消息
+        for (DocumentChunk chunk : chunks) {
+            ChunkMessage message = new ChunkMessage(meta.getId(), chunk.getId(), chunk.getText());
+            chunkExtractProducer.send(message);
+        }
+
+        log.info("文档 [{}] 异步处理流派发完成, 已投递 {} 条切块任务至 Kafka", meta.getFileName(), chunks.size());
+        // 实际的完成状态依赖于消费者执行，这里暂标记为 EXTRACTING，
+        // 后续可通过定时任务或在所有 Chunk 处理完毕后最终修改为 COMPLETED
         return meta;
     }
 }

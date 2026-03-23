@@ -20,15 +20,15 @@
 > **优化说明**：原计划此阶段一次性打通 Kafka + 发件箱 + ES + Neo4j，跨度过大。
 > 拆分原则：先让"上传 → 解析 → 切块 → 抽取 → 存 MongoDB"的主干链路跑通，再在 Phase 4 接入异构分发。
 
-- [ ] 设计 MongoDB 核心 Document 模型：
-  - [ ] `DocumentMeta`：文档元信息（文件名、上传时间、状态、来源等）
-  - [ ] `DocumentChunk`：切分后的文本块（包含原文、块序号、来源文档 ID）
-  - [ ] `ExtractionRecord`：LLM 抽取结果（source, target, relation, evidence, 状态字段 `syncStatus`）
-- [ ] 实现文件上传 REST 接口 (`POST /api/documents/upload`)：
-  - [ ] 接收文件 → LangChain4j 解析 → 分块 → 持久化 `DocumentMeta` + `DocumentChunk` 至 MongoDB
-- [ ] 实现同步抽取模式（MVP 优先）：
-  - [ ] 遍历 Chunk 调用 `EntityExtractionService` → 将结果写入 `ExtractionRecord`（`syncStatus=UNSYNCED`）
-  - [ ] 添加重试与降级逻辑：失败标记 `NEEDS_HUMAN` 不阻塞后续 Chunk
+- [x] 设计 MongoDB 核心 Document 模型：
+  - [x] `DocumentMeta`：文档元信息（文件名、上传时间、状态、来源等）
+  - [x] `DocumentChunk`：切分后的文本块（包含原文、块序号、来源文档 ID）
+  - [x] `ExtractionRecord`：LLM 抽取结果（source, target, relation, evidence, 状态字段 `syncStatus`）
+- [x] 实现文件上传 REST 接口 (`POST /api/documents/upload`)：
+  - [x] 接收文件 → LangChain4j 解析 → 分块 → 持久化 `DocumentMeta` + `DocumentChunk` 至 MongoDB
+- [x] 实现同步抽取模式（MVP 优先）：
+  - [x] 遍历 Chunk 调用 `EntityExtractionService` → 将结果写入 `ExtractionRecord`（`syncStatus=UNSYNCED`）
+  - [x] 添加重试与降级逻辑：失败标记 `NEEDS_HUMAN` 不阻塞后续 Chunk
 - [ ] 实现实体消歧与统一 (Entity Resolution) 基础逻辑
   - [ ] 同名同姓合并策略（基于上下文 MatchScore）
   - [ ] 代词指代消解（Prompt 层指令 + 后处理校验）
@@ -38,18 +38,18 @@
 > **优化说明**：Phase 3 主干跑通后，此阶段专注于将 MongoDB 中的 `UNSYNCED` 数据分发至 ES 和 Neo4j。
 > Kafka 异步解耦也在此阶段引入，替换 Phase 3 中的同步调用模式。
 
-- [ ] 向量化流水线：
+- [ ] 向量化流水线（延至 Phase 5）：
   - [ ] 调用 Spring AI `EmbeddingModel` 将 `DocumentChunk` 转化为稠密向量 (Dense Vector)
   - [ ] 设计 ES 索引映射（含 `dense_vector` 字段 + 原文 `text` 字段）
-- [ ] 发件箱分发 (Outbox Pattern)：
-  - [ ] 监听 MongoDB Change Streams 或启动定时扫描任务，捕获 `syncStatus=UNSYNCED` 记录
-  - [ ] 扇出写 ES：批量 `_bulk` 推送带向量 Chunk
-  - [ ] 扇出写 Neo4j：通过 SDN 执行 `MERGE` 合并实体和关系
-  - [ ] 双端 ACK 后更新 MongoDB 状态为 `SYNCED`
-- [ ] Kafka 异步抽取模式（替换 Phase 3 同步模式）：
-  - [ ] 创建 Topic: `doc-chunk-extract-topic`
-  - [ ] 上传接口改为：分块后投递 Kafka → Consumer 异步消费调用 LLM 抽取
-  - [ ] Consumer 限流配置（`max-poll-records`）与死信队列 (DLQ)
+- [x] 发件箱分发 (Outbox Pattern)：
+  - [x] 启动定时扫描任务，捕获 `syncStatus=UNSYNCED` 记录 (`OutboxScheduler`)
+  - [ ] 扇出写 ES：批量 `_bulk` 推送带向量 Chunk（延至 Phase 5）
+  - [x] 扇出写 Neo4j：通过 Cypher 客户端执行 `MERGE` 合并实体和关系 (`GraphSyncService`)
+  - [x] 同步成功后更新 MongoDB 状态为 `SYNCED`
+- [x] Kafka 异步抽取模式（替换 Phase 3 同步模式）：
+  - [x] 创建 Topic: `doc-chunk-extract` (`ChunkMessage`)
+  - [x] 上传接口改为：分块后投递 Kafka → Consumer 异步消费调用 LLM 抽取 (`ChunkExtractProducer` & `Consumer`)
+  - [x] Consumer 限流配置（`max-poll-records`=5）与异常处理降级机制
 
 ## Phase 5: GraphRAG Agent 引擎
 

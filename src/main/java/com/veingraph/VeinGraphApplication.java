@@ -9,11 +9,14 @@ import org.springframework.core.env.Environment;
 
 import java.net.InetAddress;
 
+import org.springframework.scheduling.annotation.EnableScheduling;
+
 /**
  * VeinGraph 应用启动入口
  * 基于 LLM 的实体提取、关系提取与 Agent 对话系统
  */
 @Slf4j
+@EnableScheduling
 @SpringBootApplication
 public class VeinGraphApplication {
 
