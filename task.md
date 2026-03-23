@@ -29,9 +29,10 @@
 - [x] 实现同步抽取模式（MVP 优先）：
   - [x] 遍历 Chunk 调用 `EntityExtractionService` → 将结果写入 `ExtractionRecord`（`syncStatus=UNSYNCED`）
   - [x] 添加重试与降级逻辑：失败标记 `NEEDS_HUMAN` 不阻塞后续 Chunk
-- [ ] 实现实体消歧与统一 (Entity Resolution) 基础逻辑
-  - [ ] 同名同姓合并策略（基于上下文 MatchScore）
-  - [ ] 代词指代消解（Prompt 层指令 + 后处理校验）
+- [x] 实现实体消歧与统一 (Entity Resolution) 基础逻辑
+  - [x] 代词指代消解（Prompt 层指令增强 + Consumer 后处理校验）
+  - [x] 同名/别名实体合并策略（编辑距离聚类 + LLM 二次确认）
+  - [x] 消歧触发机制（文档全部 Chunk 抽取完毕后自动执行）
 
 ## Phase 4: 异构数据分发 + 向量化 + 异步解耦
 
@@ -65,9 +66,11 @@
 
 ## Phase 6: 前端 MVP 与全链路联调
 
-- [ ] 搭建 Vue 3 + Element Plus 前端脚手架
-- [ ] 实现基础布局结构 (左、中、右三栏)，并支持左右面板的收缩与展开
-- [ ] 实现关系力导向图可视化组件 (D3.js / vis-network)
-- [ ] 实现对话界面 (Chat UI) 支持流式 SSE 展示
+- [x] 搭建 Vue 3 + Element Plus 前端脚手架
+- [x] 实现基础布局结构 (左、中、右三栏)，并按照 UI 视觉稿 1:1 还原暗黑科幻风格
+- [x] 实现关系力导向图可视化组件 (vis-network)，支持独立文档图谱按隔离域呈现
+- [x] 实现对话界面 (Chat UI) 支持流式 SSE 展示及动态选择关联文档上下文
+- [x] 全站文案汉化、样式修复（style.css 全局居中毒药清除）
+- [x] 后端性能探针埋点（GraphRagService 多路召回耗时统计）
 - [ ] 实现文档上传管理界面及抽取进度监控
 - [ ] 端到端大文件全链路测试与性能优化
