@@ -10,21 +10,27 @@
       :before-upload="beforeUpload"
     >
       <el-button class="upload-btn" type="primary">
-        <el-icon><Plus /></el-icon> Upload Document
+        <el-icon><Plus /></el-icon> 上传文档
       </el-button>
     </el-upload>
 
     <!-- 列表标题与篇数统计 -->
     <div class="list-header">
-      <span class="title">UPLOADED DOCUMENTS</span>
+      <span class="title">已上传文档集</span>
       <span class="count">{{ documents.length }}</span>
     </div>
 
     <!-- 文档列表 -->
     <div class="doc-list" v-loading="loading" element-loading-background="rgba(24, 28, 37, 0.8)">
-      <el-empty v-if="documents.length === 0" description="No documents uploaded" :image-size="60" />
+      <el-empty v-if="documents.length === 0" description="暂无文档数据" :image-size="60" />
       
-      <div v-for="doc in documents" :key="doc.id" class="doc-card">
+      <div 
+        v-for="doc in documents" 
+        :key="doc.id" 
+        class="doc-card"
+        :class="{ 'is-active': globalSelectedDocId === doc.id }"
+        @click="selectDocument(doc.id)"
+      >
         <div class="doc-icon">
           <el-icon><Document /></el-icon>
         </div>
@@ -50,7 +56,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, inject } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus, Document } from '@element-plus/icons-vue'
 import axios from 'axios'
@@ -59,15 +65,27 @@ const documents = ref([])
 const loading = ref(false)
 let pollTimer = null
 
+// 注入全局选中文档状态
+const globalSelectedDocId = inject('globalSelectedDocId')
+
+const selectDocument = (docId) => {
+  // 点击切换状态，如果重复点击则取消选中（即回到全局域）
+  if (globalSelectedDocId.value === docId) {
+    globalSelectedDocId.value = ''
+  } else {
+    globalSelectedDocId.value = docId
+  }
+}
+
 const fetchDocuments = async () => {
   try {
     loading.value = true
     const res = await axios.get('/api/documents?page=0&size=50')
     if (res.data.code === 200) {
-      documents.value = res.data.data.content
+      documents.value = res.data.data
     }
   } catch (error) {
-    console.error('Failed to fetch documents', error)
+    console.error('获取文档列表失败', error)
   } finally {
     loading.value = false
   }
@@ -81,7 +99,7 @@ const startPolling = () => {
     if (hasProcessing) {
       const res = await axios.get('/api/documents?page=0&size=50')
       if (res.data.code === 200) {
-        documents.value = res.data.data.content
+        documents.value = res.data.data
       }
     }
   }, 5000)
@@ -97,20 +115,20 @@ onUnmounted(() => {
 
 const beforeUpload = (file) => {
   const isLt20M = file.size / 1024 / 1024 < 20
-  if (!isLt20M) ElMessage.error('File must be smaller than 20MB!')
+  if (!isLt20M) ElMessage.error('文件大小不能超过 20MB!')
   return isLt20M
 }
 
 const handleUploadSuccess = (res) => {
   if (res.code === 200) {
-    ElMessage.success('Upload success, processing...')
+    ElMessage.success('上传成功，文档进入处理队列...')
     fetchDocuments()
   } else {
-    ElMessage.error(res.message || 'Upload failed')
+    ElMessage.error(res.message || '文档上传失败')
   }
 }
 
-const handleUploadError = () => ElMessage.error('Network error during upload')
+const handleUploadError = () => ElMessage.error('网络异常，上传失败')
 
 const formatSize = (bytes) => {
   if (!bytes) return '0 B'
@@ -122,8 +140,7 @@ const formatSize = (bytes) => {
 const formatDateForUI = (dateString) => {
   if (!dateString) return ''
   const d = new Date(dateString)
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-  return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`
+  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`
 }
 
 const getStatusColorClass = (status) => {
@@ -138,10 +155,10 @@ const getStatusColorClass = (status) => {
 
 const getStatusText = (status) => {
   switch (status) {
-    case 'PENDING': return 'Analyzing' 
-    case 'EXTRACTING': return 'Processing'
-    case 'COMPLETED': return 'Completed'
-    case 'PARTIAL_FAILED': return 'Error'
+    case 'PENDING': return '队列中' 
+    case 'EXTRACTING': return '处理中'
+    case 'COMPLETED': return '已完成'
+    case 'PARTIAL_FAILED': return '处理异常'
     default: return status
   }
 }
@@ -222,10 +239,16 @@ const getStatusText = (status) => {
   gap: 14px;
   transition: all 0.2s ease;
   align-items: flex-start;
+  cursor: pointer;
 }
 .doc-card:hover {
   border-color: #334155;
   background-color: #1a1e28;
+}
+.doc-card.is-active {
+  border-color: var(--cyan-primary);
+  background-color: var(--bg-panel);
+  box-shadow: 0 0 15px rgba(0, 229, 255, 0.1);
 }
 
 /* 左侧图标 */

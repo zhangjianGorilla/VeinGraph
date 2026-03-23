@@ -2,10 +2,10 @@
   <div class="chat-panel">
     <!-- 顶部状态信息 -->
     <div class="chat-header">
-      <div class="title">AI Assistant</div>
-      <div class="subtitle">Chat Session: Project Insights</div>
+      <div class="title">大模型智能体</div>
+      <div class="subtitle">图谱多维检索引擎</div>
       <div class="status">
-        <span class="status-dot"></span> Active
+        <span class="status-dot"></span> 在线
       </div>
     </div>
 
@@ -17,14 +17,14 @@
         class="message-wrapper"
         :class="msg.role === 'user' ? 'is-user' : 'is-assistant'"
       >
-        <div class="role-name">{{ msg.role === 'user' ? 'User' : 'Assistant' }}</div>
+        <div class="role-name">{{ msg.role === 'user' ? '提问者' : 'GraphRAG 服务' }}</div>
         <div class="message-bubble">
           <div class="message-content" v-html="renderMarkdown(msg.content)"></div>
         </div>
       </div>
       
       <div v-if="isGenerating" class="message-wrapper is-assistant">
-        <div class="role-name">Assistant</div>
+        <div class="role-name">GraphRAG 服务正在思考</div>
         <div class="message-bubble">
           <div class="typing-indicator">
             <span class="dot"></span><span class="dot"></span><span class="dot"></span>
@@ -49,7 +49,7 @@
           v-model="inputQuery"
           type="textarea"
           :autosize="{ minRows: 2, maxRows: 5 }"
-          placeholder="Type your message..."
+          placeholder="向图谱提问... (Shift + Enter 换行)"
           resize="none"
           @keydown.enter.prevent="handleEnter"
           :disabled="isGenerating"
@@ -62,10 +62,10 @@
                <template #reference>
                  <el-icon class="tool-icon"><Paperclip /></el-icon>
                </template>
-               <div style="font-size: 13px; margin-bottom: 8px; color: #e2e8f0; font-weight: 500;">Attach Document Context</div>
+               <div style="font-size: 13px; margin-bottom: 8px; color: #e2e8f0; font-weight: 500;">挂载文件作为上下文语境</div>
                <el-select 
                  v-model="selectedDocumentId" 
-                 placeholder="Global Graph (No selection)" 
+                 placeholder="全局知识视角 (未挂载文件)" 
                  clearable 
                  size="small"
                  style="width: 100%"
@@ -95,7 +95,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, nextTick, inject } from 'vue'
 import { Paperclip, Position, Document, Close } from '@element-plus/icons-vue'
 import axios from 'axios'
 import MarkdownIt from 'markdown-it'
@@ -118,8 +118,8 @@ const md = new MarkdownIt({
 
 const sessionId = ref('session_' + Date.now().toString(36))
 const messages = ref([
-  { role: 'user', content: 'How are Transformers connected to Natural Language Processing in the current graph?' },
-  { role: 'assistant', content: 'Based on the graph, Transformers are a key architecture within NLP, linked via "architectureFor" relationships to BERT, GPT-3, and T5 (see central cluster).' }
+  { role: 'user', content: '在图谱中，莫里斯和其它角色都有哪些具体交集？' },
+  { role: 'assistant', content: '您好！我是被驱动在后台运行的 **VeinGraph RAG 引线级探脉代理**。图谱提取完成后，我不仅洞悉各实体的微观联系，也可以解答跨源文件的宏大叙事。\n\n请从左侧或此处挂载特定文档上下文，试着对我展开提问吧。' }
 ])
 const inputQuery = ref('')
 const isGenerating = ref(false)
@@ -128,7 +128,7 @@ let eventSource = null
 
 // 文档下拉上下文
 const documents = ref([])
-const selectedDocumentId = ref('')
+const selectedDocumentId = inject('globalSelectedDocId')
 
 const getSelectedDocumentName = () => {
   const doc = documents.value.find(d => d.id === selectedDocumentId.value)
@@ -143,10 +143,10 @@ const fetchDocuments = async () => {
   try {
     const res = await axios.get('/api/documents?page=0&size=100')
     if (res.data.code === 200) {
-      documents.value = res.data.data.content
+      documents.value = res.data.data
     }
   } catch (error) {
-    console.error('Failed to fetch documents', error)
+    console.error('获取挂载文档列表时发生网络异常', error)
   }
 }
 

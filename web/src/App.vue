@@ -5,7 +5,7 @@
       <header class="top-navbar">
         <div class="logo">
           <el-icon class="logo-icon"><Connection /></el-icon>
-          <span>KNOWLEDGE AI</span>
+          <span>VeinGraph 核心中枢</span>
         </div>
         <div class="nav-actions">
           <el-button circle class="icon-btn"><el-icon><Bell /></el-icon></el-button>
@@ -27,21 +27,7 @@
 
         <!-- 中间面板：图谱可视化 -->
         <div class="panel center-panel">
-          <div class="panel-header">
-            <h2>Knowledge Graph Visualization</h2>
-            <div class="header-tools">
-              <el-button class="tool-btn"><el-icon><Plus /></el-icon></el-button>
-              <el-button class="tool-btn"><el-icon><Minus /></el-icon></el-button>
-              <el-button class="tool-btn"><el-icon><Search /></el-icon></el-button>
-            </div>
-          </div>
-          <div class="graph-area">
-             <!-- 预留图谱组件位置 -->
-             <div class="placeholder-comp">
-               <div class="mock-graph-circle"></div>
-               <p style="color: #64748b; margin-top: 20px;">Graph rendering engine mounting...</p>
-             </div>
-          </div>
+          <GraphVisualizer />
         </div>
 
         <!-- 右侧面板：GraphRAG 智能对话 -->
@@ -59,10 +45,15 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, provide } from 'vue'
 import { Connection, Bell, User, ArrowLeft, ArrowRight, Plus, Minus, Search } from '@element-plus/icons-vue'
 import DocumentManager from './components/DocumentManager.vue'
 import ChatPanel from './components/ChatPanel.vue'
+import GraphVisualizer from './components/GraphVisualizer.vue'
+
+// 核心跨组件状态共享：当前选中的文档ID
+const globalSelectedDocId = ref('')
+provide('globalSelectedDocId', globalSelectedDocId)
 
 const leftExpanded = ref(true)
 const rightExpanded = ref(true)
