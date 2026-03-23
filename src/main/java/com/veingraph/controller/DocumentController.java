@@ -64,12 +64,12 @@ public class DocumentController {
 
     @Operation(summary = "文档列表", description = "分页查询所有已上传文档，按创建时间倒序")
     @GetMapping
-    public Result<Page<DocumentMeta>> list(
+    public Result<List<DocumentMeta>> list(
             @Parameter(description = "页码 (0-based)") @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "每页数量") @RequestParam(defaultValue = "10") int size) {
-        Page<DocumentMeta> result = metaRepository.findAll(
+        Page<DocumentMeta> pageResult = metaRepository.findAll(
                 PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
-        return Result.ok(result);
+        return Result.ok(pageResult.getContent());
     }
 
     @Operation(summary = "文档详情", description = "查询指定文档的元信息及抽取统计")
