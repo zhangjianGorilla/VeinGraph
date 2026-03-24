@@ -31,6 +31,7 @@
 import { ref, onMounted, shallowRef, nextTick, inject, watch } from 'vue'
 import { Plus, Minus, FullScreen } from '@element-plus/icons-vue'
 import axios from 'axios'
+import request from '../utils/request'
 import { Network } from 'vis-network'
 import 'vis-network/styles/vis-network.css'
 
@@ -109,7 +110,7 @@ const graphOptions = {
 
 const fetchDocuments = async () => {
   try {
-    const res = await axios.get('/api/documents?page=0&size=100')
+    const res = await request.get('/documents?page=0&size=100')
     if (res.data.code === 200) {
       documents.value = res.data.data
     }
@@ -131,7 +132,7 @@ const fetchGraphData = async () => {
 
   loading.value = true
   try {
-    const res = await axios.get(`/api/graph?documentId=${selectedDocumentId.value}`)
+    const res = await request.get(`/graph?documentId=${selectedDocumentId.value}`)
     if (res.data.code === 200) {
       const data = res.data.data
       renderGraph(data.nodes, data.edges)

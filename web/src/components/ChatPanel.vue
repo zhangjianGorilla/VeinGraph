@@ -96,6 +96,7 @@
 import { ref, onMounted, nextTick, inject } from 'vue'
 import { Paperclip, Position, Document, Close } from '@element-plus/icons-vue'
 import axios from 'axios'
+import request from '../utils/request'
 import MarkdownIt from 'markdown-it'
 import hljs from 'highlight.js'
 import 'highlight.js/styles/atom-one-dark.css'
@@ -139,7 +140,7 @@ const clearSelectedDocument = () => {
 
 const fetchDocuments = async () => {
   try {
-    const res = await axios.get('/api/documents?page=0&size=100')
+    const res = await request.get('/documents?page=0&size=100')
     if (res.data.code === 200) {
       documents.value = res.data.data
     }
@@ -185,6 +186,11 @@ const sendMessage = () => {
   let url = `/api/chat/stream?sessionId=${sessionId.value}&question=${encodeURIComponent(q)}`
   if (selectedDocumentId.value) {
     url += `&documentId=${selectedDocumentId.value}`
+  }
+  // SSE EventSource 不支持自定义 Header，通过 URL 参数传递 token
+  const token = localStorage.getItem('token')
+  if (token) {
+    url += `&token=${encodeURIComponent(token)}`
   }
 
   eventSource = new EventSource(url)

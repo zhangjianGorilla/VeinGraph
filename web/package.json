@@ -16,7 +16,8 @@
     "markdown-it": "^14.1.1",
     "markdown-it-highlightjs": "^4.3.0",
     "vis-network": "^10.0.2",
-    "vue": "^3.5.30"
+    "vue": "^3.5.30",
+    "vue-router": "^4.6.4"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.5",

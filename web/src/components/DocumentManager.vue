@@ -4,6 +4,7 @@
     <el-upload
       class="upload-area"
       action="/api/documents/upload-async"
+      :headers="uploadHeaders"
       :show-file-list="false"
       :on-success="handleUploadSuccess"
       :on-error="handleUploadError"
@@ -60,10 +61,19 @@ import { ref, onMounted, onUnmounted, inject } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus, Document } from '@element-plus/icons-vue'
 import axios from 'axios'
+import request from '../utils/request'
 
 const documents = ref([])
 const loading = ref(false)
 let pollTimer = null
+
+// 上传请求携带 JWT Token
+const uploadHeaders = ref({})
+const updateUploadHeaders = () => {
+  const token = localStorage.getItem('token')
+  uploadHeaders.value = token ? { Authorization: `Bearer ${token}` } : {}
+}
+updateUploadHeaders()
 
 // 注入全局选中文档状态
 const globalSelectedDocId = inject('globalSelectedDocId')
@@ -80,7 +90,7 @@ const selectDocument = (docId) => {
 const fetchDocuments = async () => {
   try {
     loading.value = true
-    const res = await axios.get('/api/documents?page=0&size=50')
+    const res = await request.get('/documents?page=0&size=50')
     if (res.data.code === 200) {
       documents.value = res.data.data
     }
@@ -97,7 +107,7 @@ const startPolling = () => {
       ['PENDING', 'EXTRACTING'].includes(doc.status)
     )
     if (hasProcessing) {
-      const res = await axios.get('/api/documents?page=0&size=50')
+      const res = await request.get('/documents?page=0&size=50')
       if (res.data.code === 200) {
         documents.value = res.data.data
       }
