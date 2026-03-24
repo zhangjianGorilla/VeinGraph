@@ -102,43 +102,22 @@ const handleLogin = async () => {
   loading.value = true
   try {
     if (isRegister.value) {
-      // 注册走原有接口
+      // 注册
       const res = await axios.post('/api/auth/register', {
         username: form.username,
         password: form.password,
         nickname: form.nickname || form.username
       })
       if (res.data.code === 200) {
-        handleOAuth2LoginSuccess(res.data.data)
-        ElMessage.success('身份注册成功')
+        ElMessage.success('注册成功，正在登录...')
+        // 注册成功后自动登录
+        await doOAuth2Login()
       } else {
         ElMessage.error(res.data.message || '注册失败')
       }
     } else {
       // 登录走 OAuth2 Password Grant
-      const params = new URLSearchParams()
-      params.append('grant_type', 'password')
-      params.append('username', form.username)
-      params.append('password', form.password)
-      params.append('client_id', OAUTH2_CLIENT_ID)
-      params.append('client_secret', OAUTH2_CLIENT_SECRET)
-
-      const res = await axios.post('/api/oauth2/token', params, {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-      })
-
-      if (res.data.access_token) {
-        localStorage.setItem('token', res.data.access_token)
-        localStorage.setItem('user', JSON.stringify({
-          userId: res.data.userId,
-          nickname: res.data.nickname,
-          token: res.data.access_token
-        }))
-        ElMessage.success('接入中枢成功')
-        router.push('/')
-      } else {
-        ElMessage.error(res.data.error_description || '认证失败')
-      }
+      await doOAuth2Login()
     }
   } catch (error) {
     const msg = error.response?.data?.error_description
@@ -150,11 +129,31 @@ const handleLogin = async () => {
   }
 }
 
-// 统一处理登录成功
-const handleOAuth2LoginSuccess = (data) => {
-  localStorage.setItem('token', data.token)
-  localStorage.setItem('user', JSON.stringify(data))
-  router.push('/')
+// OAuth2 Password Grant 登录
+const doOAuth2Login = async () => {
+  const params = new URLSearchParams()
+  params.append('grant_type', 'password')
+  params.append('username', form.username)
+  params.append('password', form.password)
+  params.append('client_id', OAUTH2_CLIENT_ID)
+  params.append('client_secret', OAUTH2_CLIENT_SECRET)
+
+  const res = await axios.post('/api/oauth2/token', params, {
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+  })
+
+  if (res.data.access_token) {
+    localStorage.setItem('token', res.data.access_token)
+    localStorage.setItem('user', JSON.stringify({
+      userId: res.data.userId,
+      nickname: res.data.nickname,
+      token: res.data.access_token
+    }))
+    ElMessage.success('接入中枢成功')
+    router.push('/')
+  } else {
+    ElMessage.error(res.data.error_description || '认证失败')
+  }
 }
 
 // 社交授权回调
