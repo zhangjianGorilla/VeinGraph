@@ -123,8 +123,8 @@ public class EsHybridSearchService {
                 s.knn(k -> {
                     k.field("vector")
                      .queryVector(toList(queryVector))
-                     .k(topK)
-                     .numCandidates(topK * 2)
+                     .k((long) topK)
+                     .numCandidates((long) topK * 2)
                      .boost(0.7f);
                     if (knnFilter != null) {
                         k.filter(knnFilter);

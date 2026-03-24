@@ -95,10 +95,14 @@ veingraph:
   # ==================== 认证配置 ====================
   auth:
     enabled: true
+    issuer: http://localhost:9999/api
     frontend-redirect-url: http://localhost:5173
     jwt:
       secret: ${JWT_SECRET:veingraph-default-secret-key-please-change-in-production}
       expiration: 86400000
+    oauth2:
+      client-id: ${OAUTH2_CLIENT_ID:veingraph-web}
+      client-secret: ${OAUTH2_CLIENT_SECRET:veingraph-web-secret}
   chunking:
     max-size: 5000
     max-overlap: 200
@@ -112,9 +116,11 @@ veingraph:
 
 # ==================== Knife4j API 文档 ====================
 knife4j:
-  enable: false
+  enable: true
   setting:
     language: zh_cn
+    enable-debug: true
+    enable-open-auth: true
 # ==================== 日志配置 ====================
 logging:
   level:
