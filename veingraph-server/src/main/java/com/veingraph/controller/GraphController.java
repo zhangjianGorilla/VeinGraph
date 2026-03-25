@@ -37,8 +37,7 @@ public class GraphController {
             if (!owned) {
                 return Result.fail(403, "无权访问该文档的图谱");
             }
-            GraphDataVO data = convertToVO(graphQueryService.getGraphData(documentId));
-            return Result.ok(data);
+            return Result.ok(graphQueryService.getGraphData(documentId));
         }
         // 无 documentId 时，查询当前用户所有文档的图谱
         List<String> docIds = metaRepository.findByUserId(userId).stream()
@@ -48,36 +47,6 @@ public class GraphController {
             return Result.ok(new GraphDataVO(List.of(), List.of()));
         }
         // 传第一个文档 ID（保持原有接口兼容性），或合并多文档
-        GraphDataVO data = convertToVO(graphQueryService.getGraphData(null));
-        return Result.ok(data);
-    }
-
-    @SuppressWarnings("unchecked")
-    private GraphDataVO convertToVO(java.util.Map<String, Object> data) {
-        List<GraphDataVO.Node> nodes = ((List<?>) data.getOrDefault("nodes", List.of())).stream()
-                .map(obj -> {
-                    java.util.Map<String, Object> node = (java.util.Map<String, Object>) obj;
-                    return new GraphDataVO.Node(
-                            (String) node.get("id"),
-                            (String) node.get("label"),
-                            (String) node.get("type"),
-                            (java.util.Map<String, Object>) node.get("properties")
-                    );
-                })
-                .toList();
-
-        List<GraphDataVO.Edge> edges = ((List<?>) data.getOrDefault("edges", List.of())).stream()
-                .map(obj -> {
-                    java.util.Map<String, Object> edge = (java.util.Map<String, Object>) obj;
-                    return new GraphDataVO.Edge(
-                            (String) edge.get("from"),
-                            (String) edge.get("to"),
-                            (String) edge.get("label"),
-                            (java.util.Map<String, Object>) edge.get("properties")
-                    );
-                })
-                .toList();
-
-        return new GraphDataVO(nodes, edges);
+        return Result.ok(graphQueryService.getGraphData(null));
     }
 }

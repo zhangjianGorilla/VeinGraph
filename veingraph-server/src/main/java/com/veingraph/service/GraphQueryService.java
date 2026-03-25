@@ -1,5 +1,6 @@
 package com.veingraph.service;
 
+import com.veingraph.controller.vo.GraphDataVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.neo4j.driver.Driver;
@@ -22,7 +23,7 @@ public class GraphQueryService {
      * 获取指定文档的隔离图谱数据
      * @param documentId 文档ID。如果为空，则默认返回全局的全量（或限制一定数量）图谱。
      */
-    public Map<String, Object> getGraphData(String documentId) {
+    public GraphDataVO getGraphData(String documentId) {
         String cypher;
         Map<String, Object> params = new HashMap<>();
 
@@ -43,9 +44,9 @@ public class GraphQueryService {
                 """;
         }
 
-        Set<Map<String, Object>> nodes = new HashSet<>();
-        List<Map<String, Object>> edges = new ArrayList<>();
-        Set<String> nodeNames = new HashSet<>(); // 用于去重
+        List<GraphDataVO.Node> nodes = new ArrayList<>();
+        List<GraphDataVO.Edge> edges = new ArrayList<>();
+        Set<String> nodeNames = new HashSet<>();
 
         try (Session session = neo4jDriver.session(SessionConfig.defaultConfig())) {
             Result result = session.run(cypher, params);
@@ -56,27 +57,18 @@ public class GraphQueryService {
                 String relation = record.get("relation").asString();
 
                 if (nodeNames.add(source)) {
-                    nodes.add(Map.of("id", source, "label", source));
+                    nodes.add(new GraphDataVO.Node(source, source, null, null));
                 }
                 if (nodeNames.add(target)) {
-                    nodes.add(Map.of("id", target, "label", target));
+                    nodes.add(new GraphDataVO.Node(target, target, null, null));
                 }
 
-                edges.add(Map.of(
-                    "from", source,
-                    "to", target,
-                    "label", relation
-                ));
+                edges.add(new GraphDataVO.Edge(source, target, relation, null));
             }
         } catch (Exception e) {
             log.error("查询图谱数据失败: {}", e.getMessage(), e);
         }
 
-        Map<String, Object> graphData = new HashMap<>();
-        // vis-network 需要 nodes 和 edges 数组
-        graphData.put("nodes", nodes);
-        graphData.put("edges", edges);
-
-        return graphData;
+        return new GraphDataVO(nodes, edges);
     }
 }
