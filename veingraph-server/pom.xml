@@ -71,17 +71,10 @@
             <artifactId>spring-kafka</artifactId>
         </dependency>
 
-        <!-- ==================== LLM 调用层: Spring AI ==================== -->
+        <!-- 使用 OpenAI 兼容 API，通过 base-url + completions-path 适配各厂商，无需专用 SDK -->
         <dependency>
             <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-starter-model-zhipuai</artifactId>
-            <exclusions>
-                <!-- 排除旧版 swagger-annotations(2.2.25)，避免与 springdoc 的 jakarta 版(2.2.30) 冲突 -->
-                <exclusion>
-                    <groupId>io.swagger.core.v3</groupId>
-                    <artifactId>swagger-annotations</artifactId>
-                </exclusion>
-            </exclusions>
+            <artifactId>spring-ai-starter-model-openai</artifactId>
         </dependency>
 
         <!-- ==================== 底层 NLP 工具: LangChain4j ==================== -->

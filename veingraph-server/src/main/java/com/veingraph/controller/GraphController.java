@@ -2,7 +2,7 @@ package com.veingraph.controller;
 
 import com.veingraph.auth.util.SecurityUtils;
 import com.veingraph.common.result.Result;
-import com.veingraph.controller.vo.GraphDataVO;
+import com.veingraph.model.vo.GraphDataVO;
 import com.veingraph.model.DocumentMeta;
 import com.veingraph.repository.mongo.DocumentMetaRepository;
 import com.veingraph.service.GraphQueryService;

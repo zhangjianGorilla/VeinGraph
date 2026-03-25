@@ -1,4 +1,4 @@
-package com.veingraph.controller.dto;
+package com.veingraph.model.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 

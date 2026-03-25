@@ -1,6 +1,6 @@
 package com.veingraph.service;
 
-import com.veingraph.controller.vo.GraphDataVO;
+import com.veingraph.model.vo.GraphDataVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.neo4j.driver.Driver;

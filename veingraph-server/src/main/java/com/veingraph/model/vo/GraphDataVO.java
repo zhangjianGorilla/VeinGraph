@@ -1,4 +1,4 @@
-package com.veingraph.controller.vo;
+package com.veingraph.model.vo;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
