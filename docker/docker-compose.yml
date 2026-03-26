@@ -58,6 +58,21 @@ services:
       - es-data:/usr/share/elasticsearch/data
     restart: unless-stopped
 
+  # ==================== MySQL (关系型数据库) ====================
+  mysql:
+    image: mysql:8
+    container_name: veingraph-mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: veingraph
+      MYSQL_DATABASE: veingraph
+      MYSQL_ROOT_HOST: '%'
+      TZ: Asia/Shanghai
+    volumes:
+      - mysql-data:/var/lib/mysql
+    restart: unless-stopped
+
   # ==================== Kafka + Zookeeper (异步消息总线) ====================
   zookeeper:
     image: confluentinc/cp-zookeeper:7.7.0
@@ -91,4 +106,5 @@ volumes:
   mongo-data:
   neo4j-data:
   es-data:
+  mysql-data:
   kafka-data:

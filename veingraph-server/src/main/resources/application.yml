@@ -73,16 +73,25 @@ spring:
       username: neo4j
       password: veingraph
 
-  # ==================== Spring AI Alibaba (LLM 调用层) ====================
+  # ==================== Spring AI OpenAI 兼容接入（阿里云百炼）====================
   ai:
-    zhipuai:
-      api-key: ${ZHIPUAI_API_KEY:YOUR_API_KEY_HERE}
-      base-url: "https://open.bigmodel.cn/api/paas"
+    openai:
+      # 只填域名，路径由 completions-path / embeddings-path 控制
+      base-url: https://open.bigmodel.cn/api/paas/v4
+      api-key: ${API_KEY:YOUR_API_KEY}
       chat:
+        # 百炼 OpenAI 兼容端点
+        completions-path: /chat/completions
         options:
-          model: glm-4.6
+          model: glm-5
+      embedding:
+        # 覆盖默认的 /v1/embeddings
+        embeddings-path: /embeddings
+        options:
+          model: embedding-3
+          dimensions: 1024
 
-# ==================== Actuator 健康检查 ====================
+# ==================== Actuator 健康检查 ====================z
 management:
   endpoints:
     web:

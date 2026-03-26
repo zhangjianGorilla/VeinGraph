@@ -30,13 +30,15 @@ public class GraphSyncService {
     public void syncRecord(ExtractionRecord record) {
         String cypher = """
                 MERGE (s:Entity {name: $source})
+                SET s.documentId = $documentId
                 MERGE (t:Entity {name: $target})
-                MERGE (s)-[r:RELATION {type: $relation}]->(t)
+                SET t.documentId = $documentId
+                MERGE (s)-[r:RELATION {type: $relation, documentId: $documentId}]->(t)
                   ON CREATE SET r.evidence = $evidence,
-                                r.documentId = $documentId,
                                 r.chunkId = $chunkId,
                                 r.createdAt = datetime()
-                  ON MATCH SET  r.evidence = $evidence
+                  ON MATCH SET  r.evidence = $evidence,
+                                r.chunkId = $chunkId
                 """;
 
         Map<String, Object> params = Map.of(
