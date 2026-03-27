@@ -5,20 +5,23 @@ import com.veingraph.model.ChatMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
 import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
  * GraphRAG 编排服务
- * 并发执行 Neo4j 图查询 + ES 语义检索，融合上下文后调用 LLM 生成回答
+ * 并发执行 Neo4j 图查询 + ES 关键词检索 + Milvus 向量检索，融合上下文后调用 LLM 生成回答
  */
 @Slf4j
 @Service
@@ -28,6 +31,8 @@ public class GraphRagService {
     private final ChatClient chatClient;
     private final Text2CypherService text2CypherService;
     private final EsHybridSearchService esHybridSearchService;
+    private final MilvusVectorSearchService milvusVectorSearchService;
+    private final EmbeddingModel embeddingModel;
     private final ChatHistoryService chatHistoryService;
 
     @Value("classpath:prompts/graphrag-system.st")
@@ -36,6 +41,10 @@ public class GraphRagService {
     /** ES 检索返回 Top-K */
     @Value("${veingraph.rag.es-top-k:5}")
     private int esTopK;
+
+    /** Milvus 向量检索返回 Top-K */
+    @Value("${veingraph.rag.milvus-top-k:5}")
+    private int milvusTopK;
 
     /** 并发召回执行器 */
     private final ExecutorService executor = Executors.newCachedThreadPool();
@@ -72,7 +81,7 @@ public class GraphRagService {
      */
     public Flux<String> askStream(String sessionId, String documentId, String question) {
         long totalStart = System.currentTimeMillis();
-        
+
         // 保存用户消息
         chatHistoryService.saveMessage(sessionId, ChatMessage.ROLE_USER, question);
 
@@ -90,9 +99,9 @@ public class GraphRagService {
 
         // 收集完整回答并保存
         StringBuilder fullAnswer = new StringBuilder();
-        long[] firstTokenTime = new long[1]; // 用于记录首字返回时间
+        long[] firstTokenTime = new long[1];
         firstTokenTime[0] = 0;
-        
+
         return stream.doOnNext(chunk -> {
                     if (firstTokenTime[0] == 0) {
                         firstTokenTime[0] = System.currentTimeMillis();
@@ -108,10 +117,13 @@ public class GraphRagService {
     }
 
     /**
-     * 构建 Super Prompt：并发执行双路召回并融合
+     * 构建 Super Prompt：并发执行多路召回并融合
      */
     private String buildSuperPrompt(String sessionId, String documentId, String question) {
-        // 并发执行两路召回
+        // 先生成问题向量（供 Milvus 使用）
+        float[] queryVector = embeddingModel.embed(question);
+
+        // 并发执行四路召回
         CompletableFuture<String> graphFuture = CompletableFuture.supplyAsync(() -> {
             long start = System.currentTimeMillis();
             String res = text2CypherService.queryCypher(documentId, question);
@@ -122,7 +134,14 @@ public class GraphRagService {
         CompletableFuture<List<String>> esFuture = CompletableFuture.supplyAsync(() -> {
             long start = System.currentTimeMillis();
             List<String> res = esHybridSearchService.keywordSearch(documentId, question, esTopK);
-            log.info("[耗时统计] ES倒排与向量混合检索 子任务耗时: {} ms", System.currentTimeMillis() - start);
+            log.info("[耗时统计] ES关键词检索 子任务耗时: {} ms", System.currentTimeMillis() - start);
+            return res;
+        }, executor);
+
+        CompletableFuture<List<String>> milvusFuture = CompletableFuture.supplyAsync(() -> {
+            long start = System.currentTimeMillis();
+            List<String> res = milvusVectorSearchService.vectorSearch(documentId, queryVector, milvusTopK);
+            log.info("[耗时统计] Milvus向量检索 子任务耗时: {} ms", System.currentTimeMillis() - start);
             return res;
         }, executor);
 
@@ -139,8 +158,14 @@ public class GraphRagService {
         String chatHistory;
         try {
             graphContext = graphFuture.join();
+
+            // 合并 ES 关键词 + Milvus 向量结果（去重）
             List<String> esResults = esFuture.join();
-            searchContext = esResults.isEmpty() ? "无相关结果" : String.join("\n---\n", esResults);
+            List<String> milvusResults = milvusFuture.join();
+            Set<String> merged = new LinkedHashSet<>(esResults);
+            merged.addAll(milvusResults);
+
+            searchContext = merged.isEmpty() ? "无相关结果" : String.join("\n---\n", merged);
             chatHistory = historyFuture.join();
         } catch (Exception e) {
             log.warn("部分召回通道失败，使用降级数据: {}", e.getMessage());

@@ -8,8 +8,8 @@ import org.springframework.data.elasticsearch.annotations.Field;
 import org.springframework.data.elasticsearch.annotations.FieldType;
 
 /**
- * ES 索引实体：文本块 + 稠密向量
- * 用于混合检索（BM25 关键词 + Dense Vector KNN）
+ * ES 索引实体：文本块（仅 BM25 关键词检索）
+ * 向量存储已迁移至 Milvus
  */
 @Data
 @Document(indexName = "veingraph-chunks")
@@ -28,7 +28,4 @@ public class ChunkVectorDocument {
     @Schema(description = "纯文本内容")
     private String text;
 
-    @Field(type = FieldType.Dense_Vector, dims = 1024)
-    @Schema(description = "文本稠密向量 (1024 维)")
-    private float[] vector;
 }

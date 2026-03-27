@@ -115,8 +115,14 @@ veingraph:
   chunking:
     max-size: 5000
     max-overlap: 200
+  milvus:
+    host: localhost
+    port: 19530
+    collection-name: veingraph_chunks
+    dimension: 1024
   rag:
     es-top-k: 5
+    milvus-top-k: 5
   outbox:
     scan-interval: 10000
     batch-size: 100
