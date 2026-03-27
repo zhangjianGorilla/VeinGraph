@@ -11,7 +11,7 @@
       :before-upload="beforeUpload"
     >
       <el-button class="upload-btn" type="primary">
-        <el-icon><Plus /></el-icon> 上传文档
+        <el-icon><Plus /></el-icon>上传文档
       </el-button>
     </el-upload>
 
@@ -185,7 +185,12 @@ const getStatusText = (status) => {
 /* 顶部抢眼的上传按钮 */
 .upload-area {
   display: block;
+  width: 100%;
   margin-bottom: 24px;
+}
+.upload-area :deep(.el-upload) {
+  display: block;
+  width: 100%;
 }
 .upload-btn {
   width: 100%;
@@ -199,7 +204,7 @@ const getStatusText = (status) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
   transition: opacity 0.2s;
 }
 .upload-btn:hover {
