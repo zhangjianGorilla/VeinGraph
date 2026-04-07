@@ -77,18 +77,20 @@ spring:
   ai:
     openai:
       # 只填域名，路径由 completions-path / embeddings-path 控制
-      base-url: https://open.bigmodel.cn/api/paas/v4
-      api-key: ${API_KEY:YOUR_API_KEY}
+      base-url: https://coding.dashscope.aliyuncs.com
+      api-key: ${DASHSCOPE_API_KEY}
       chat:
         # 百炼 OpenAI 兼容端点
-        completions-path: /chat/completions
+#        completions-path: /chat/completions
+        completions-path: /v1/chat/completions
         options:
           model: glm-5
       embedding:
         # 覆盖默认的 /v1/embeddings
-        embeddings-path: /embeddings
+        api-key: gpustack_ff8a7ba5478e39e2_88dbdea762b16eda66326ffd10739a6d
+        base-url: http://192.168.0.21:19980
         options:
-          model: embedding-3
+          model: bge-m3
           dimensions: 1024
 
 # ==================== Actuator 健康检查 ====================z

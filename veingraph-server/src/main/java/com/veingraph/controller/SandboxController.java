@@ -8,10 +8,12 @@ import com.veingraph.llm.service.EntityExtractionService;
 import com.veingraph.llm.service.LlmChatService;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.segment.TextSegment;
+import io.milvus.param.R;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -36,6 +38,7 @@ public class SandboxController {
     private final DocumentChunkingService documentChunkingService;
     private final LlmChatService llmChatService;
     private final EntityExtractionService entityExtractionService;
+    private final EmbeddingModel embeddingModel;
 
     @Operation(summary = "大模型基础闲聊", description = "发送一条消息给智谱 GLM，测试基础通信是否正常")
     @GetMapping("/chat")
@@ -70,5 +73,13 @@ public class SandboxController {
             @Parameter(description = "待抽取的文本内容")
             @RequestParam(defaultValue = "王局长昨天在会议室会见了李主任，两人讨论了部门预算事宜。") String text) {
         return Result.ok(entityExtractionService.extract(text));
+    }
+
+    @Operation(summary = "文本向量化测试", description = "测试文本向量化")
+    @GetMapping("/embedding")
+    public Result<float[]> embedding (
+            @Parameter(description = "待抽取的文本内容")
+            @RequestParam(defaultValue = "王局长昨天在会议室会见了李主任，两人讨论了部门预算事宜。") String text) {
+        return Result.ok(embeddingModel.embed(text));
     }
 }
