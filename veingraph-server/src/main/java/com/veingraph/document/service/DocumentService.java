@@ -11,8 +11,7 @@ import com.veingraph.repository.mongo.DocumentMetaRepository;
 import com.veingraph.repository.mongo.ExtractionRecordRepository;
 import com.veingraph.kafka.ChunkExtractProducer;
 import com.veingraph.kafka.ChunkMessage;
-import dev.langchain4j.data.document.Document;
-import dev.langchain4j.data.segment.TextSegment;
+import org.springframework.ai.document.Document;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -58,10 +57,10 @@ public class DocumentService {
 
         // 2. Tika 解析
         Document document = parserService.parse(file.getInputStream());
-        log.info("Tika 解析完成, 文本长度: {}", document.text().length());
+        log.info("Tika 解析完成, 文本长度: {}", document.getText().length());
 
         // 3. 切块
-        List<TextSegment> segments = chunkingService.split(document);
+        List<Document> segments = chunkingService.split(document);
         log.info("切块完成, 共 {} 块", segments.size());
 
         // 4. 持久化所有 Chunk
@@ -70,7 +69,7 @@ public class DocumentService {
             DocumentChunk chunk = new DocumentChunk();
             chunk.setDocumentId(meta.getId());
             chunk.setChunkIndex(i);
-            chunk.setText(segments.get(i).text());
+            chunk.setText(segments.get(i).getText());
             chunk.setCreatedAt(LocalDateTime.now());
             chunks.add(chunk);
         }
@@ -138,10 +137,10 @@ public class DocumentService {
 
         // 2. Tika 解析
         Document document = parserService.parse(file.getInputStream());
-        log.info("Tika 解析完成, 文本长度: {}", document.text().length());
+        log.info("Tika 解析完成, 文本长度: {}", document.getText().length());
 
         // 3. 切块
-        List<TextSegment> segments = chunkingService.split(document);
+        List<Document> segments = chunkingService.split(document);
         log.info("切块完成, 共 {} 块", segments.size());
 
         // 4. 持久化所有 Chunk
@@ -150,7 +149,7 @@ public class DocumentService {
             DocumentChunk chunk = new DocumentChunk();
             chunk.setDocumentId(meta.getId());
             chunk.setChunkIndex(i);
-            chunk.setText(segments.get(i).text());
+            chunk.setText(segments.get(i).getText());
             chunk.setCreatedAt(LocalDateTime.now());
             chunks.add(chunk);
         }

@@ -71,29 +71,22 @@
             <artifactId>spring-kafka</artifactId>
         </dependency>
 
-        <!-- 使用 OpenAI 兼容 API，通过 base-url + completions-path 适配各厂商，无需专用 SDK -->
+        <!-- 阿里云百炼 DashScope - Phase 1 关系抽取 + Phase 2 ReactAgent 共用 -->
+        <dependency>
+            <groupId>com.alibaba.cloud.ai</groupId>
+            <artifactId>spring-ai-alibaba-starter-dashscope</artifactId>
+        </dependency>
+
+        <!-- ==================== 底层 NLP 工具: Spring AI Tika 文档读取 ==================== -->
         <dependency>
             <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-starter-model-openai</artifactId>
+            <artifactId>spring-ai-tika-document-reader</artifactId>
         </dependency>
 
-        <!-- ==================== 底层 NLP 工具: LangChain4j ==================== -->
+        <!-- ==================== 向量数据库: Milvus (Spring AI BOM 管理) ==================== -->
         <dependency>
-            <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j</artifactId>
-            <version>${langchain4j.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-document-parser-apache-tika</artifactId>
-            <version>${langchain4j.version}</version>
-        </dependency>
-
-        <!-- ==================== 向量数据库: Milvus ==================== -->
-        <dependency>
-            <groupId>io.milvus</groupId>
-            <artifactId>milvus-sdk-java</artifactId>
-            <version>2.5.4</version>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-vector-store-milvus</artifactId>
         </dependency>
 
         <!-- ==================== 工具库 ==================== -->

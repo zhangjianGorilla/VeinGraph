@@ -1,12 +1,13 @@
 package com.veingraph.document.service;
 
-import dev.langchain4j.data.document.Document;
-import dev.langchain4j.data.document.DocumentParser;
-import dev.langchain4j.data.document.parser.apache.tika.ApacheTikaDocumentParser;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.document.Document;
+import org.springframework.ai.reader.tika.TikaDocumentReader;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.stereotype.Service;
 
 import java.io.InputStream;
+import java.util.List;
 
 /**
  * 核心文档解析服务
@@ -16,16 +17,16 @@ import java.io.InputStream;
 @Service
 public class DocumentParserService {
 
-    private final DocumentParser documentParser = new ApacheTikaDocumentParser();
-
     /**
-     * 解析任意格式的文档流为纯文本 Document 对象
+     * 解析任意格式的文档流为 Spring AI Document 对象
      *
      * @param inputStream 原始文件流 (PDF, Word, TXT 等)
-     * @return 解析后的纯文本对象
+     * @return 解析后的纯文本 Document
      */
     public Document parse(InputStream inputStream) {
         log.info("开始使用 Apache Tika 本地解析文档...");
-        return documentParser.parse(inputStream);
+        TikaDocumentReader reader = new TikaDocumentReader(new InputStreamResource(inputStream));
+        List<Document> docs = reader.get();
+        return docs.isEmpty() ? new Document("") : docs.get(0);
     }
 }

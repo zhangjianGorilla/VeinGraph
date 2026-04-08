@@ -73,25 +73,30 @@ spring:
       username: neo4j
       password: veingraph
 
-  # ==================== Spring AI OpenAI 兼容接入（阿里云百炼）====================
+  # ==================== Spring AI - 阿里云百炼 DashScope + Milvus 向量库 ====================
   ai:
-    openai:
-      # 只填域名，路径由 completions-path / embeddings-path 控制
-      base-url: https://coding.dashscope.aliyuncs.com
+    dashscope:
       api-key: ${DASHSCOPE_API_KEY}
       chat:
-        # 百炼 OpenAI 兼容端点
-#        completions-path: /chat/completions
-        completions-path: /v1/chat/completions
         options:
-          model: glm-5
+          # Phase 1（关系抽取）和 Phase 2（ReactAgent）共用同一模型
+          # qwen-plus 支持工具调用，可通过环境变量覆盖
+          model: ${DASHSCOPE_MODEL:qwen-plus}
       embedding:
-        # 覆盖默认的 /v1/embeddings
-        api-key: gpustack_ff8a7ba5478e39e2_88dbdea762b16eda66326ffd10739a6d
-        base-url: http://192.168.0.21:19980
         options:
-          model: bge-m3
+          model: ${DASHSCOPE_EMBEDDING_MODEL:text-embedding-v3}
           dimensions: 1024
+    vectorstore:
+      milvus:
+        client:
+          host: localhost
+          port: 19530
+        database-name: default
+        collection-name: veingraph_chunks
+        embedding-dimension: 1024
+        index-type: HNSW
+        metric-type: COSINE
+        initialize-schema: true
 
 # ==================== Actuator 健康检查 ====================z
 management:
@@ -117,11 +122,6 @@ veingraph:
   chunking:
     max-size: 5000
     max-overlap: 200
-  milvus:
-    host: localhost
-    port: 19530
-    collection-name: veingraph_chunks
-    dimension: 1024
   rag:
     es-top-k: 5
     milvus-top-k: 5

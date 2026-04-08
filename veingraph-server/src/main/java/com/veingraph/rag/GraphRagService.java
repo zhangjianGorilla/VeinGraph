@@ -5,7 +5,6 @@ import com.veingraph.model.ChatMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
@@ -32,7 +31,6 @@ public class GraphRagService {
     private final Text2CypherService text2CypherService;
     private final EsHybridSearchService esHybridSearchService;
     private final MilvusVectorSearchService milvusVectorSearchService;
-    private final EmbeddingModel embeddingModel;
     private final ChatHistoryService chatHistoryService;
 
     @Value("classpath:prompts/graphrag-system.st")
@@ -120,9 +118,6 @@ public class GraphRagService {
      * 构建 Super Prompt：并发执行多路召回并融合
      */
     private String buildSuperPrompt(String sessionId, String documentId, String question) {
-        // 先生成问题向量（供 Milvus 使用）
-        float[] queryVector = embeddingModel.embed(question);
-
         // 并发执行四路召回
         CompletableFuture<String> graphFuture = CompletableFuture.supplyAsync(() -> {
             long start = System.currentTimeMillis();
@@ -140,7 +135,7 @@ public class GraphRagService {
 
         CompletableFuture<List<String>> milvusFuture = CompletableFuture.supplyAsync(() -> {
             long start = System.currentTimeMillis();
-            List<String> res = milvusVectorSearchService.vectorSearch(documentId, queryVector, milvusTopK);
+            List<String> res = milvusVectorSearchService.vectorSearch(documentId, question, milvusTopK);
             log.info("[耗时统计] Milvus向量检索 子任务耗时: {} ms", System.currentTimeMillis() - start);
             return res;
         }, executor);

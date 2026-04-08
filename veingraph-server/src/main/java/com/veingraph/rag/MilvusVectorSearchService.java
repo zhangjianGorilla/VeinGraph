@@ -1,13 +1,10 @@
 package com.veingraph.rag;
 
-
-import io.milvus.v2.client.MilvusClientV2;
-import io.milvus.v2.service.vector.request.SearchReq;
-import io.milvus.v2.service.vector.request.data.FloatVec;
-import io.milvus.v2.service.vector.response.SearchResp;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.ai.document.Document;
+import org.springframework.ai.vectorstore.SearchRequest;
+import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
@@ -16,58 +13,38 @@ import java.util.stream.Collectors;
 
 /**
  * Milvus 向量检索服务
- * 基于 ANN 近似最近邻搜索，返回语义最相关的文本块
+ * 基于 Spring AI VectorStore 抽象执行 ANN 近似最近邻搜索，返回语义最相关的文本块
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class MilvusVectorSearchService {
 
-    private final MilvusClientV2 milvusClient;
-
-    @Value("${veingraph.milvus.collection-name:veingraph_chunks}")
-    private String collectionName;
+    private final VectorStore vectorStore;
 
     /**
      * 向量相似度检索
      *
-     * @param documentId  限定的文档 ID（可为空，为空则全局搜）
-     * @param queryVector 问题的稠密向量表示
-     * @param topK        返回数量上限
+     * @param documentId 限定的文档 ID（可为空，为空则全局搜）
+     * @param query      查询文本（VectorStore 内部完成 Embedding）
+     * @param topK       返回数量上限
      * @return 相关文本块列表
      */
-    public List<String> vectorSearch(String documentId, float[] queryVector, int topK) {
+    public List<String> vectorSearch(String documentId, String query, int topK) {
         try {
-            // 构建过滤表达式
-            String filter = null;
+            SearchRequest.Builder builder = SearchRequest.builder()
+                    .query(query)
+                    .topK(topK);
+
             if (documentId != null && !documentId.isBlank()) {
-                filter = "document_id == \"" + documentId + "\"";
+                builder.filterExpression("document_id == '" + documentId + "'");
             }
 
-            SearchReq.SearchReqBuilder builder = SearchReq.builder()
-                    .collectionName(collectionName)
-                    .data(Collections.singletonList(new FloatVec(queryVector)))
-                    .annsField("vector")
-                    .topK(topK)
-                    .outputFields(List.of("text"));
+            List<Document> results = vectorStore.similaritySearch(builder.build());
 
-            if (filter != null) {
-                builder.filter(filter);
-            }
-
-            SearchResp response = milvusClient.search(builder.build());
-
-            List<List<SearchResp.SearchResult>> results = response.getSearchResults();
-            if (results.isEmpty()) {
-                return Collections.emptyList();
-            }
-
-            List<String> texts = results.get(0).stream()
-                    .map(result -> {
-                        Object textObj = result.getEntity().get("text");
-                        return textObj != null ? textObj.toString() : "";
-                    })
-                    .filter(text -> !text.isEmpty())
+            List<String> texts = results.stream()
+                    .map(Document::getText)
+                    .filter(text -> text != null && !text.isEmpty())
                     .collect(Collectors.toList());
 
             log.info("Milvus 向量检索: 命中 {} 条", texts.size());
